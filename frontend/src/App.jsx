@@ -347,12 +347,6 @@ const compactFormatter = new Intl.NumberFormat('en-GH', {
 
 const liveRefreshMs = Math.max(0, Number(import.meta.env.VITE_LIVE_REFRESH_MS ?? 30000) || 0)
 
-const healthColors = {
-  on_track: '#188a5a',
-  at_risk: '#c47a16',
-  critical: '#c24132',
-}
-
 const cloudConsolePaths = ['/cloud-console', '/platform-admin', '/super-admin']
 
 function isCloudConsolePath(pathname = window.location.pathname) {
@@ -483,6 +477,8 @@ const emptyProjectForm = {
   target_end_date: '',
   contract_completion_date: '',
   defects_liability_end_date: '',
+  future_image: null,
+  future_image_preview: '',
   country: 'GH',
   region: '',
   city: '',
@@ -510,6 +506,14 @@ const emptyProjectForm = {
   linked_estimate: '',
   linked_contract: '',
 }
+
+const projectNumericFields = [
+  'contract_value',
+  'approved_variations',
+  'revised_contract_value',
+  'retention_percent',
+  'advance_payment',
+]
 
 const emptyTaskForm = {
   title: '',
@@ -1472,24 +1476,7 @@ function App() {
 
   async function createProject(event) {
     event.preventDefault()
-    const projectNumericFields = [
-      'contract_value',
-      'approved_variations',
-      'revised_contract_value',
-      'retention_percent',
-      'advance_payment',
-    ]
-    const payload = {
-      ...projectForm,
-      branch_id: Number(projectForm.branch_id),
-      client_id: projectForm.client_id ? Number(projectForm.client_id) : null,
-    }
-
-    projectNumericFields.forEach((field) => {
-      payload[field] = projectForm[field] === '' || projectForm[field] === null || projectForm[field] === undefined
-        ? null
-        : Number(projectForm[field])
-    })
+    const payload = projectRequestPayload(projectForm)
 
     const result = await runAction(
       () => api.createProject(payload),
@@ -3123,7 +3110,6 @@ function App() {
             archiveCompany={archivePlatformCompany}
             restoreCompany={restorePlatformCompany}
             deleteArchivedCompany={deleteArchivedPlatformCompany}
-            activeLayer={cloudConsoleLayer}
             activeTab={cloudConsoleTab}
             setActiveLayer={setCloudConsoleLayer}
             setActiveTab={setCloudConsoleTab}
@@ -3192,7 +3178,6 @@ function App() {
             users={users}
             projects={projects}
             selectedProject={selectedProject}
-            selectedProjectId={selectedProjectId}
             setSelectedProjectId={setSelectedProjectId}
             projectForm={projectForm}
             setProjectForm={setProjectForm}
@@ -3384,7 +3369,6 @@ function App() {
             branches={branches}
             clients={clients}
             suppliers={suppliers}
-            roles={roles}
             users={users}
             currentUser={user}
             approvals={adminApprovals}
@@ -3621,7 +3605,6 @@ function PlatformAdminView({
   saveStaffUser,
   deleteStaffUser,
   saveProfile,
-  activeLayer = 'platform',
   activeTab = 'executive',
   setActiveLayer,
   setActiveTab,
@@ -3773,10 +3756,14 @@ function PlatformAdminView({
     }))
   }, [setPlatformForms])
   const roleRows = companies.flatMap((company) => (company.roles || []).map((role) => [company.name, role.name, role.slug, (role.permissions || []).includes('*') ? 'All tenant access' : `${(role.permissions || []).length} permissions`, role.is_system ? 'System' : 'Custom']))
-  const catalogCountries = catalog.countries || []
-  const catalogCurrencies = catalog.currencies || []
-  const countryOptions = useMemo(() => catalogCountries.map((country) => ({ value: country, label: countryName(country), meta: country })), [catalogCountries])
-  const currencyOptions = useMemo(() => catalogCurrencies.map((currency) => ({ value: currency, label: currencyName(currency), meta: currency })), [catalogCurrencies])
+  const countryOptions = useMemo(
+    () => (catalog.countries || emptyList).map((country) => ({ value: country, label: countryName(country), meta: country })),
+    [catalog.countries],
+  )
+  const currencyOptions = useMemo(
+    () => (catalog.currencies || emptyList).map((currency) => ({ value: currency, label: currencyName(currency), meta: currency })),
+    [catalog.currencies],
+  )
   const catalogCompanyStatuses = catalog.statuses || []
   const catalogPlanStatuses = catalog.plan_statuses || []
   const catalogSubscriptionStatuses = catalog.subscription_statuses || []
@@ -6233,9 +6220,7 @@ function DashboardProjectCard({ project }) {
 
   return (
     <article className="erp-project-card">
-      <div className="erp-project-mark">
-        <span>{initials(project.name || project.project || project.code || 'Project')}</span>
-      </div>
+      <ProjectVisual project={project} className="erp-project-mark" />
       <div className="erp-project-card-body">
         <div>
           <strong>{project.name || project.project}</strong>
@@ -6249,6 +6234,44 @@ function DashboardProjectCard({ project }) {
         </div>
       </div>
     </article>
+  )
+}
+
+function ProjectVisual({ project, className = '' }) {
+  const imageUrl = projectFutureImageUrl(project)
+  const name = project?.name || project?.project || project?.code || 'Project'
+
+  return (
+    <div className={`project-visual ${className} ${imageUrl ? 'has-image' : 'placeholder'}`}>
+      {imageUrl ? (
+        <img src={imageUrl} alt={`${name} future view`} loading="lazy" />
+      ) : (
+        <span>{initials(name)}</span>
+      )}
+    </div>
+  )
+}
+
+function ProjectImageUpload({ label = 'Future Project Image', imageUrl = '', file, onChange, className = '' }) {
+  return (
+    <div className={`project-image-upload ${className}`}>
+      <div className={`project-image-preview ${imageUrl ? 'has-image' : ''}`}>
+        {imageUrl ? (
+          <img src={imageUrl} alt="Future project preview" />
+        ) : (
+          <div>
+            <Upload size={22} />
+            <strong>No image selected</strong>
+            <small>Upload the final project view for dashboard and portfolio cards.</small>
+          </div>
+        )}
+      </div>
+      <label className="field project-image-input">
+        <span>{label}</span>
+        <input type="file" accept="image/png,image/jpeg,image/webp" onChange={onChange} />
+        <small>{file?.name || 'JPG, PNG, or WebP up to 6 MB'}</small>
+      </label>
+    </div>
   )
 }
 
@@ -7735,7 +7758,6 @@ function ProjectsView({
   users = emptyList,
   projects,
   selectedProject,
-  selectedProjectId,
   setSelectedProjectId,
   projectForm,
   setProjectForm,
@@ -7808,7 +7830,6 @@ function ProjectsView({
   const selectedIncidents = selectedProject?.safety_incidents || emptyList
   const selectedObservations = selectedProject?.safety_observations || emptyList
   const selectedToolboxTalks = selectedProject?.toolbox_talks || emptyList
-  const selectedPermits = selectedProject?.work_permits || emptyList
   const selectedApprovals = selectedProject?.client_approvals || emptyList
   const selectedSubmittals = selectedProject?.consultant_submittals || emptyList
   const selectedPortalItems = selectedProject?.portal_work_items || emptyList
@@ -7867,18 +7888,7 @@ function ProjectsView({
   function saveProjectAdministration(event) {
     event.preventDefault()
     if (!selectedProject) return
-    const projectNumericFields = ['contract_value', 'approved_variations', 'revised_contract_value', 'retention_percent', 'advance_payment']
-    const payload = {
-      ...projectAdminForm,
-      client_id: projectAdminForm.client_id ? Number(projectAdminForm.client_id) : null,
-      progress_percent: Number(projectAdminForm.progress_percent || 0),
-    }
-
-    projectNumericFields.forEach((field) => {
-      payload[field] = projectAdminForm[field] === '' || projectAdminForm[field] === null || projectAdminForm[field] === undefined
-        ? null
-        : Number(projectAdminForm[field])
-    })
+    const payload = projectRequestPayload(projectAdminForm)
 
     runAction(
       () => api.updateProject(selectedProject.id, payload),
@@ -8137,7 +8147,10 @@ function ProjectsView({
         <DataTable
           columns={['Project', 'Client', 'Manager', 'Progress', 'Contract Value', 'Budget', 'Schedule', 'Health', 'Status', 'Action']}
           rows={rows.map((project) => [
-            <div key="project" className="project-register-name"><strong>{project.name}</strong><small>{project.code}</small></div>,
+            <div key="project" className="project-register-project">
+              <ProjectVisual project={project} className="project-register-thumb" />
+              <div className="project-register-name"><strong>{project.name}</strong><small>{project.code}</small></div>
+            </div>,
             projectClientName(project),
             projectMeta(project).project_manager || '',
             <div key="progress" className="erp-table-progress"><span>{project.progress_percent || 0}%</span><DashboardProgress value={project.progress_percent || 0} /></div>,
@@ -8177,6 +8190,12 @@ function ProjectsView({
             <Select label="Project Status" name="status" value={projectForm.status} onChange={formHandler}>{projectStatusOptions.map((status) => <option key={status} value={status}>{labelize(status)}</option>)}</Select>
             <Select label="Priority" name="priority" value={projectForm.priority} onChange={formHandler}>{priorityOptions.map((priority) => <option key={priority} value={priority}>{labelize(priority)}</option>)}</Select>
             <TextArea className="span-2" label="Description" name="description" value={projectForm.description} onChange={formHandler} />
+            <ProjectImageUpload
+              className="span-full"
+              imageUrl={projectForm.future_image_preview}
+              file={projectForm.future_image}
+              onChange={setProjectFutureImage(setProjectForm)}
+            />
           </div>
         </section>
 
@@ -8285,7 +8304,8 @@ function ProjectsView({
     return (
       <section className="project-workspace project-command-centre">
         <header className="project-head enriched-project-head">
-          <div>
+          <ProjectVisual project={selectedProject} className="project-head-visual" />
+          <div className="project-head-copy">
             <p>{selectedProject.code} | {projectClientName(selectedProject)} | {selectedMeta.region || selectedProject.country}</p>
             <h2>{selectedProject.name}</h2>
             <small>{selectedMeta.project_type || 'Project'} | {selectedMeta.contract_type || 'Contract type not set'} | {selectedMeta.project_manager || 'No project manager set'}</small>
@@ -8703,6 +8723,13 @@ function ProjectsView({
             <Field label="Site Manager" name="site_manager" value={projectAdminForm.site_manager} onChange={formHandler} list="project-user-list" />
             <Field className="span-2" label="Site Address" name="site_address" value={projectAdminForm.site_address} onChange={formHandler} />
             <TextArea className="span-2" label="Description" name="description" value={projectAdminForm.description} onChange={formHandler} />
+            <ProjectImageUpload
+              className="span-full"
+              label="Replace Future Project Image"
+              imageUrl={projectAdminForm.future_image_preview || projectFutureImageUrl(selectedProject)}
+              file={projectAdminForm.future_image}
+              onChange={setProjectFutureImage(setProjectAdminForm)}
+            />
             <div className="row-actions span-2">
               <button type="submit" className="primary-action"><CheckCircle2 size={17} />Save project</button>
               <button type="button" className="table-action danger" onClick={archiveSelectedProject}>Archive project</button>
@@ -8749,6 +8776,68 @@ function uniqueValues(values = []) {
 
 function projectMeta(project) {
   return project?.metadata && typeof project.metadata === 'object' ? project.metadata : {}
+}
+
+function projectFutureImageUrl(project) {
+  return project?.future_image_url || projectMeta(project).future_image_url || ''
+}
+
+function projectPayloadFromForm(form) {
+  const payload = Object.fromEntries(
+    Object.entries(form).filter(([key]) => !['future_image', 'future_image_preview'].includes(key)),
+  )
+
+  payload.branch_id = form.branch_id ? Number(form.branch_id) : ''
+  payload.client_id = form.client_id ? Number(form.client_id) : null
+
+  if ('progress_percent' in form) {
+    payload.progress_percent = Number(form.progress_percent || 0)
+  }
+
+  projectNumericFields.forEach((field) => {
+    payload[field] = form[field] === '' || form[field] === null || form[field] === undefined
+      ? null
+      : Number(form[field])
+  })
+
+  return payload
+}
+
+function projectRequestPayload(form) {
+  const payload = projectPayloadFromForm(form)
+
+  if (!form.future_image) {
+    return payload
+  }
+
+  const formData = new FormData()
+  Object.entries(payload).forEach(([key, value]) => {
+    formData.append(key, value === null || value === undefined ? '' : String(value))
+  })
+  formData.append('future_image', form.future_image)
+
+  return formData
+}
+
+function setProjectFutureImage(setter) {
+  return (event) => {
+    const file = event.target.files?.[0] || null
+
+    if (!file) {
+      setter((current) => ({ ...current, future_image: null, future_image_preview: '' }))
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      setter((current) => ({
+        ...current,
+        future_image: file,
+        future_image_preview: String(reader.result || ''),
+      }))
+    }
+    reader.readAsDataURL(file)
+  }
 }
 
 function projectClientName(project) {
@@ -17142,7 +17231,6 @@ function AdminView({
   branches,
   clients,
   suppliers,
-  roles,
   users,
   currentUser,
   approvals = emptyAdminApprovalData,

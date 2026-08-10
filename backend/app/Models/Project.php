@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Storage;
 
 class Project extends Model
 {
@@ -36,9 +37,14 @@ class Project extends Model
         'start_date',
         'target_end_date',
         'actual_end_date',
+        'future_image_path',
         'metadata',
         'created_by',
         'updated_by',
+    ];
+
+    protected $appends = [
+        'future_image_url',
     ];
 
     protected function casts(): array
@@ -54,6 +60,15 @@ class Project extends Model
             'actual_end_date' => 'date',
             'metadata' => 'array',
         ];
+    }
+
+    public function getFutureImageUrlAttribute(): ?string
+    {
+        if (! $this->future_image_path) {
+            return null;
+        }
+
+        return Storage::disk('public')->url($this->future_image_path);
     }
 
     public function branch(): BelongsTo

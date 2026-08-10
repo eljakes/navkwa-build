@@ -21,6 +21,7 @@ npm run build
 cd "$BACKEND_DIR"
 php artisan navkwabuild:production-check --strict
 php artisan migrate --force
+php artisan storage:link --force
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache

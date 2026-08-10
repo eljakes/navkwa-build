@@ -7,6 +7,7 @@ use App\Models\Client;
 use App\Models\Project;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class ProjectController extends ApiController
@@ -64,6 +65,7 @@ class ProjectController extends ApiController
             'progress_percent' => ['nullable', 'integer', 'between:0,100'],
             'start_date' => ['nullable', 'date'],
             'target_end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
+            'future_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:6144'],
             ...$this->projectMetadataRules(),
         ]);
 
@@ -103,6 +105,12 @@ class ProjectController extends ApiController
             'created_by' => $this->user($request)->id,
             'updated_by' => $this->user($request)->id,
         ]);
+
+        if ($request->hasFile('future_image')) {
+            $project->forceFill([
+                'future_image_path' => $this->storeFutureImage($request, $project),
+            ])->save();
+        }
 
         $this->publishAutomationEvent($request, 'project_created', [
             'record_type' => 'project',
@@ -177,6 +185,7 @@ class ProjectController extends ApiController
             'start_date' => ['nullable', 'date'],
             'target_end_date' => ['nullable', 'date'],
             'actual_end_date' => ['nullable', 'date'],
+            'future_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:6144'],
             ...$this->projectMetadataRules(true),
         ]);
 
@@ -185,7 +194,7 @@ class ProjectController extends ApiController
         }
 
         $metadata = array_replace_recursive($project->metadata ?? [], $this->projectMetadataFrom($data));
-        $projectFields = collect($data)->except($this->projectMetadataFields())->all();
+        $projectFields = collect($data)->except([...$this->projectMetadataFields(), 'future_image'])->all();
 
         $project->update([
             ...$projectFields,
@@ -195,6 +204,16 @@ class ProjectController extends ApiController
             'metadata' => $metadata,
             'updated_by' => $this->user($request)->id,
         ]);
+
+        if ($request->hasFile('future_image')) {
+            if ($project->future_image_path) {
+                Storage::disk('public')->delete($project->future_image_path);
+            }
+
+            $project->forceFill([
+                'future_image_path' => $this->storeFutureImage($request, $project),
+            ])->save();
+        }
 
         if (in_array($project->fresh()->health_status, ['at_risk', 'critical'], true) || in_array($data['risk_level'] ?? null, ['high', 'critical'], true)) {
             $this->publishAutomationEvent($request, 'project_delayed', [
@@ -351,5 +370,12 @@ class ProjectController extends ApiController
             'linked_estimate',
             'linked_contract',
         ];
+    }
+
+    private function storeFutureImage(Request $request, Project $project): string
+    {
+        return $request
+            ->file('future_image')
+            ->store("navkwabuild/companies/{$project->company_id}/projects/{$project->id}/future-image", 'public');
     }
 }

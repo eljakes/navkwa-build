@@ -120,8 +120,8 @@ DB_PASSWORD=navkwabuild_secret
 - Set `APP_ENV=production`, `APP_DEBUG=false`, a real `APP_KEY`, `APP_VERSION`, secure mail/storage credentials, and a production PostgreSQL database with TLS.
 - Keep `NAVKWA_BUILD_SEED_DEVELOPMENT=false` in production. Run `php artisan migrate --force`, not `migrate:fresh --seed`, on production data.
 - Before release, run `composer release-check` from `backend/` with production environment variables loaded, and `npm run release-check` from `frontend/`.
-- Run `composer install --no-dev --optimize-autoloader`, `php artisan migrate --force`, `php artisan config:cache`, `php artisan route:cache`, and `php artisan view:cache` during release.
-- Run `php artisan storage:link` only when using Laravel public storage. Current ERP file downloads are served from private storage through authenticated API endpoints.
+- Run `composer install --no-dev --optimize-autoloader`, `php artisan migrate --force`, `php artisan storage:link --force`, `php artisan config:cache`, `php artisan route:cache`, and `php artisan view:cache` during release.
+- Public project portfolio images are served from Laravel public storage. Operational documents and file downloads remain protected through authenticated API endpoints.
 - Run a queue worker for `QUEUE_CONNECTION=database`, and monitor failed jobs.
 - Create the first Navkwa Build Cloud Console administrator with `php artisan navkwabuild:platform-admin admin@navkwabuild.com --create`, then change the temporary password immediately and enable MFA.
 - The frontend refreshes authenticated ERP data from Laravel every `VITE_LIVE_REFRESH_MS` milliseconds. Set it to `0` to disable polling when replacing it with websockets.

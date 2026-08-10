@@ -52,6 +52,22 @@ async function request(path, options = {}) {
   return payload
 }
 
+function requestBody(payload) {
+  return payload instanceof FormData ? payload : JSON.stringify(payload)
+}
+
+function spoofPatchBody(payload) {
+  if (payload instanceof FormData) {
+    if (!payload.has('_method')) {
+      payload.append('_method', 'PATCH')
+    }
+
+    return payload
+  }
+
+  return JSON.stringify(payload)
+}
+
 export const api = {
   login: (payload) =>
     request('/auth/login', {
@@ -362,12 +378,12 @@ export const api = {
   createProject: (payload) =>
     request('/projects', {
       method: 'POST',
-      body: JSON.stringify(payload),
+      body: requestBody(payload),
     }),
   updateProject: (projectId, payload) =>
     request(`/projects/${projectId}`, {
-      method: 'PATCH',
-      body: JSON.stringify(payload),
+      method: payload instanceof FormData ? 'POST' : 'PATCH',
+      body: spoofPatchBody(payload),
     }),
   deleteProject: (projectId) =>
     request(`/projects/${projectId}`, {

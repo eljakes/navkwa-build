@@ -50,8 +50,9 @@ class NavkwaBuildPhaseOneApiTest extends TestCase
         [$user, $branch] = $this->tenantUser();
 
         Sanctum::actingAs($user);
+        Storage::fake('public');
 
-        $projectId = $this->postJson('/api/v1/projects', [
+        $projectResponse = $this->post('/api/v1/projects', [
             'branch_id' => $branch->id,
             'client_name' => 'Cedar Developments',
             'name' => 'Cedar Office Park',
@@ -59,9 +60,16 @@ class NavkwaBuildPhaseOneApiTest extends TestCase
             'contract_value' => 2500000,
             'start_date' => now()->toDateString(),
             'target_end_date' => now()->addMonths(10)->toDateString(),
-        ])
-            ->assertCreated()
-            ->json('project.id');
+            'future_image' => UploadedFile::fake()->image('cedar-final-view.jpg', 1200, 720),
+        ], ['Accept' => 'application/json']);
+
+        $projectResponse->assertCreated();
+
+        $projectId = $projectResponse->json('project.id');
+        $project = Project::query()->findOrFail($projectId);
+
+        $this->assertNotNull($projectResponse->json('project.future_image_url'));
+        Storage::disk('public')->assertExists($project->future_image_path);
 
         $this->postJson("/api/v1/projects/{$projectId}/budget-lines", [
             'cost_code' => 'C01',
@@ -87,7 +95,8 @@ class NavkwaBuildPhaseOneApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('kpis.total_projects', 1)
             ->assertJsonPath('kpis.active_projects', 1)
-            ->assertJsonPath('kpis.budget_total', 500000);
+            ->assertJsonPath('kpis.budget_total', 500000)
+            ->assertJsonPath('portfolio_cards.0.future_image_url', $project->future_image_url);
     }
 
     public function test_admin_can_create_update_and_delete_users(): void
