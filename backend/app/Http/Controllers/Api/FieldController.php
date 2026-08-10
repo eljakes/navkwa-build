@@ -179,7 +179,7 @@ class FieldController extends ApiController
 
         $issue->delete();
 
-        return response()->json(['message' => 'Field issue archived.']);
+        return response()->json(['message' => 'Site issue archived.']);
     }
 
     public function clockIn(Request $request): JsonResponse

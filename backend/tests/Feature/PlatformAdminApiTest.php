@@ -47,7 +47,7 @@ class PlatformAdminApiTest extends TestCase
 
         Sanctum::actingAs($platformUser);
 
-        $this->getJson('/api/v1/platform-admin')
+        $response = $this->getJson('/api/v1/platform-admin')
             ->assertOk()
             ->assertJsonStructure([
                 'summary',
@@ -60,6 +60,15 @@ class PlatformAdminApiTest extends TestCase
                 'feature_flags',
                 'catalog' => ['console_layers', 'modules', 'countries', 'currencies', 'platform_permissions'],
             ]);
+
+        $catalog = $response->json('catalog');
+        $this->assertGreaterThanOrEqual(55, count($catalog['countries']));
+        $this->assertContains('DZ', $catalog['countries']);
+        $this->assertContains('GH', $catalog['countries']);
+        $this->assertContains('ZW', $catalog['countries']);
+        $this->assertContains('DZD', $catalog['currencies']);
+        $this->assertContains('GHS', $catalog['currencies']);
+        $this->assertContains('ZWL', $catalog['currencies']);
 
         $this->assertDatabaseHas('platform_feature_flags', ['key' => 'module.projects']);
         $this->assertDatabaseHas('platform_subscription_plans', ['code' => 'professional']);
@@ -500,6 +509,61 @@ class PlatformAdminApiTest extends TestCase
             'email' => 'tenant.admin@archive-ready.test',
             'password' => 'TenantPass2026',
         ])->assertOk();
+    }
+
+    public function test_platform_admin_can_permanently_delete_archived_company_accounts(): void
+    {
+        Mail::fake();
+        Storage::fake('local');
+
+        [$platformUser] = $this->userWithPermissions(['platform.manage']);
+        Sanctum::actingAs($platformUser);
+
+        $this->getJson('/api/v1/platform-admin')->assertOk();
+        $professional = PlatformSubscriptionPlan::query()->where('code', 'professional')->firstOrFail();
+
+        $response = $this->postJson('/api/v1/platform-admin/companies', [
+            'name' => 'Permanent Delete Builders',
+            'country' => 'GH',
+            'currency' => 'GHS',
+            'primary_contact_name' => 'Tenant Admin',
+            'primary_contact_email' => 'tenant.admin@permanent-delete.test',
+            'admin_password' => 'TenantPass2026',
+            'subscription_plan_id' => $professional->id,
+            'status' => 'active',
+        ])->assertCreated();
+
+        $companyId = $response->json('company.id');
+        $tenantKey = $response->json('company.tenant_key');
+
+        Storage::disk('local')->put("tenants/{$tenantKey}/branding/logo.txt", 'logo');
+        Storage::disk('local')->put("navkwabuild/companies/{$companyId}/documents/spec.txt", 'spec');
+
+        $this->deleteJson("/api/v1/platform-admin/companies/{$companyId}/permanent")
+            ->assertNotFound();
+
+        $this->deleteJson("/api/v1/platform-admin/companies/{$companyId}")
+            ->assertOk()
+            ->assertJsonPath('message', 'Company archived.');
+
+        $this->assertSoftDeleted('companies', ['id' => $companyId]);
+
+        $this->deleteJson("/api/v1/platform-admin/companies/{$companyId}/permanent")
+            ->assertOk()
+            ->assertJsonPath('message', 'Company permanently deleted.');
+
+        $this->assertDatabaseMissing('companies', ['id' => $companyId]);
+        $this->assertDatabaseMissing('company_subscriptions', ['company_id' => $companyId]);
+        $this->assertDatabaseMissing('users', ['email' => 'tenant.admin@permanent-delete.test']);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'platform.company.permanently_deleted']);
+        Storage::disk('local')->assertMissing("tenants/{$tenantKey}/branding/logo.txt");
+        Storage::disk('local')->assertMissing("navkwabuild/companies/{$companyId}/documents/spec.txt");
+
+        $archivedCompanies = $this->getJson('/api/v1/platform-admin')
+            ->assertOk()
+            ->json('archived_companies');
+
+        $this->assertNull(collect($archivedCompanies)->firstWhere('id', $companyId));
     }
 
     public function test_platform_admin_can_edit_delete_and_upgrade_subscriptions(): void

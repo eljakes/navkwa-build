@@ -294,7 +294,7 @@ class NavkwaBuildPhaseTwoApiTest extends TestCase
 
         $this->deleteJson("/api/v1/field/issues/{$issueId}")
             ->assertOk()
-            ->assertJsonPath('message', 'Field issue archived.');
+            ->assertJsonPath('message', 'Site issue archived.');
         $this->assertSoftDeleted('field_issues', ['id' => $issueId]);
 
         $attendanceId = $this->post('/api/v1/attendance/clock-in', [

@@ -55,6 +55,11 @@ class SupplierInvoice extends Model
         return $this->belongsTo(Supplier::class);
     }
 
+    public function project(): BelongsTo
+    {
+        return $this->belongsTo(Project::class);
+    }
+
     public function payments(): HasMany
     {
         return $this->hasMany(SupplierPayment::class);

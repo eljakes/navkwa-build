@@ -99,14 +99,17 @@ class OrganizationController extends ApiController
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', $this->passwordRule()],
             'branch_id' => ['required', 'integer'],
-            'role_id' => ['required', 'integer'],
+            'role_id' => ['nullable', 'integer'],
+            'role_name' => ['required_without:role_id', 'nullable', 'string', 'max:120'],
             'permissions' => ['nullable', 'array'],
             'permissions.*' => ['string', 'max:120'],
             'phone' => ['nullable', 'string', 'max:60'],
         ]);
 
         Branch::query()->forCompany($companyId)->whereKey($data['branch_id'])->firstOrFail();
-        Role::query()->forCompany($companyId)->whereKey($data['role_id'])->firstOrFail();
+        $role = $this->resolveUserRole($data, $companyId);
+        $data['role_id'] = $role->id;
+        unset($data['role_name']);
 
         $user = User::query()->create([
             'company_id' => $companyId,
@@ -184,7 +187,8 @@ class OrganizationController extends ApiController
             'email' => ['sometimes', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
             'password' => ['nullable', $this->passwordRule()],
             'branch_id' => ['sometimes', 'integer'],
-            'role_id' => ['sometimes', 'integer'],
+            'role_id' => ['sometimes', 'nullable', 'integer'],
+            'role_name' => ['sometimes', 'nullable', 'string', 'max:120'],
             'permissions' => ['nullable', 'array'],
             'permissions.*' => ['string', 'max:120'],
             'phone' => ['nullable', 'string', 'max:60'],
@@ -195,9 +199,12 @@ class OrganizationController extends ApiController
             Branch::query()->forCompany($companyId)->whereKey($data['branch_id'])->firstOrFail();
         }
 
-        if (array_key_exists('role_id', $data)) {
+        if (filled($data['role_name'] ?? null)) {
+            $data['role_id'] = $this->resolveUserRole($data, $companyId)->id;
+        } elseif (array_key_exists('role_id', $data)) {
             Role::query()->forCompany($companyId)->whereKey($data['role_id'])->firstOrFail();
         }
+        unset($data['role_name']);
 
         $passwordChanged = filled($data['password'] ?? null);
         if (blank($data['password'] ?? null)) {
@@ -259,6 +266,33 @@ class OrganizationController extends ApiController
         }
 
         return $slug;
+    }
+
+    private function resolveUserRole(array $data, int $companyId): Role
+    {
+        if (filled($data['role_name'] ?? null)) {
+            $name = trim((string) $data['role_name']);
+            $slug = Str::slug($name) ?: 'custom-role';
+
+            $existingRole = Role::query()
+                ->forCompany($companyId)
+                ->where('slug', $slug)
+                ->first();
+
+            if ($existingRole) {
+                return $existingRole;
+            }
+
+            return Role::query()->create([
+                'company_id' => $companyId,
+                'name' => $name,
+                'slug' => $this->uniqueRoleSlug($name, $companyId),
+                'permissions' => $this->normalizePermissions($data['permissions'] ?? []),
+                'is_system' => false,
+            ]);
+        }
+
+        return Role::query()->forCompany($companyId)->whereKey($data['role_id'])->firstOrFail();
     }
 
     public function destroyUser(Request $request, User $user): JsonResponse

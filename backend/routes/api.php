@@ -50,6 +50,7 @@ Route::prefix('v1')->group(function (): void {
         Route::patch('platform-admin/companies/{company}', [PlatformAdminController::class, 'updateCompanyAccount'])->middleware('permission:platform.manage');
         Route::delete('platform-admin/companies/{company}', [PlatformAdminController::class, 'archiveCompany'])->middleware('permission:platform.manage');
         Route::post('platform-admin/companies/{companyId}/restore', [PlatformAdminController::class, 'restoreCompany'])->middleware('permission:platform.manage');
+        Route::delete('platform-admin/companies/{companyId}/permanent', [PlatformAdminController::class, 'permanentlyDeleteCompany'])->middleware('permission:platform.manage');
         Route::patch('platform-admin/companies/{company}/features/{flag}', [PlatformAdminController::class, 'updateCompanyFeature'])->middleware('permission:platform.manage');
         Route::post('platform-admin/companies/{company}/branding', [PlatformAdminController::class, 'updateBranding'])->middleware('permission:platform.manage');
         Route::patch('platform-admin/companies/{company}/success', [PlatformAdminController::class, 'updateCompanySuccess'])->middleware('permission:platform.manage');

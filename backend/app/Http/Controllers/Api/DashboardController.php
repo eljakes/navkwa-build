@@ -19,14 +19,18 @@ use App\Models\Inspection;
 use App\Models\InventoryItem;
 use App\Models\Invoice;
 use App\Models\Lead;
+use App\Models\LeaveRequest;
 use App\Models\NonConformanceReport;
 use App\Models\Opportunity;
+use App\Models\Payment;
 use App\Models\PayrollRun;
 use App\Models\Project;
 use App\Models\ProjectTask;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseRequisition;
 use App\Models\SafetyIncident;
+use App\Models\SupplierInvoice;
+use App\Models\SupplierPayment;
 use App\Models\Tender;
 use App\Models\WorkPermit;
 use Illuminate\Http\JsonResponse;
@@ -67,18 +71,29 @@ class DashboardController extends ApiController
             ->whereIn('status', ['issued', 'approved', 'delivered', 'closed'])
             ->sum('total_amount');
 
+        $totalRevenue = Invoice::query()
+            ->forCompany($companyId)
+            ->where('status', '!=', 'draft')
+            ->sum('total_amount');
+        $totalCost = (float) ($portfolio->actual_cost ?? 0);
+
         return response()->json([
             'kpis' => [
                 'total_projects' => (int) ($portfolio->total_projects ?? 0),
                 'active_projects' => (int) ($portfolio->active_projects ?? 0),
                 'critical_projects' => (int) ($portfolio->critical_projects ?? 0),
+                'total_revenue' => (float) $totalRevenue,
+                'total_cost' => $totalCost,
+                'gross_profit' => (float) $totalRevenue - $totalCost,
                 'contract_value' => (float) ($portfolio->contract_value ?? 0),
                 'budget_total' => (float) ($portfolio->budget_total ?? 0),
                 'committed_total' => (float) ($portfolio->committed_total ?? 0),
-                'actual_cost' => (float) ($portfolio->actual_cost ?? 0),
+                'actual_cost' => $totalCost,
                 'issued_po_value' => (float) $issuedPoValue,
                 'variance' => (float) (($portfolio->budget_total ?? 0) - ($portfolio->actual_cost ?? 0)),
+                'cost_variance' => (float) (($portfolio->budget_total ?? 0) - ($portfolio->actual_cost ?? 0)),
                 'average_progress' => round((float) ($portfolio->average_progress ?? 0), 1),
+                'average_days_to_finish' => $this->averageDaysToFinish($companyId),
                 'late_tasks' => $lateTasks,
                 'pending_approvals' => $pendingApprovals,
                 'open_leads' => Lead::query()->forCompany($companyId)->whereNotIn('stage', ['won', 'lost'])->count(),
@@ -94,6 +109,16 @@ class DashboardController extends ApiController
                 'portal_reviews' => ClientApproval::query()->forCompany($companyId)->where('status', 'submitted')->count()
                     + ConsultantSubmittal::query()->forCompany($companyId)->whereIn('status', ['submitted', 'in_review'])->count(),
             ],
+            'portfolio_cards' => $this->portfolioCards($companyId),
+            'budget_overview' => $this->budgetOverview($portfolio),
+            'cash_flow_trend' => $this->cashFlowTrend($companyId),
+            'procurement_overview' => $this->procurementOverview($companyId),
+            'pending_approval_items' => $this->pendingApprovalItems($companyId),
+            'inventory_alerts' => $this->inventoryAlerts($companyId),
+            'workforce_attendance' => $this->workforceAttendance($companyId),
+            'invoice_summary' => $this->invoiceSummary($companyId),
+            'cost_breakdown' => $this->costBreakdown($companyId),
+            'project_performance' => $this->projectPerformance($companyId),
             'project_health' => $this->projectHealth($companyId),
             'cost_by_category' => $this->costByCategory($companyId),
             'procurement_status' => $this->procurementStatus($companyId),
@@ -220,6 +245,385 @@ class DashboardController extends ApiController
             ->select('health_status', DB::raw('count(*) as total'))
             ->groupBy('health_status')
             ->get();
+    }
+
+    private function portfolioCards(int $companyId)
+    {
+        return Project::query()
+            ->forCompany($companyId)
+            ->with(['client:id,name'])
+            ->whereIn('status', ['planning', 'active', 'on_hold'])
+            ->orderByDesc('updated_at')
+            ->limit(4)
+            ->get()
+            ->map(fn (Project $project): array => [
+                'id' => $project->id,
+                'code' => $project->code,
+                'name' => $project->name,
+                'client' => $project->client?->name,
+                'status' => $project->status,
+                'health_status' => $project->health_status,
+                'country' => $project->country,
+                'currency' => $project->currency,
+                'contract_value' => (float) $project->contract_value,
+                'budget_total' => (float) $project->budget_total,
+                'actual_cost' => (float) $project->actual_cost,
+                'progress_percent' => (int) $project->progress_percent,
+                'target_end_date' => $project->target_end_date,
+            ]);
+    }
+
+    private function budgetOverview(object $portfolio): array
+    {
+        $budget = (float) ($portfolio->budget_total ?? 0);
+        $committed = (float) ($portfolio->committed_total ?? 0);
+        $actual = (float) ($portfolio->actual_cost ?? 0);
+        $balance = max(0, $budget - $actual);
+
+        return [
+            'budget' => $budget,
+            'committed' => $committed,
+            'actual' => $actual,
+            'balance' => $balance,
+            'utilized_percent' => $budget > 0 ? round(($actual / $budget) * 100, 1) : 0,
+        ];
+    }
+
+    private function cashFlowTrend(int $companyId): array
+    {
+        $start = now()->startOfMonth()->subMonths(11);
+        $end = now()->endOfMonth();
+
+        $clientPayments = Payment::query()
+            ->forCompany($companyId)
+            ->whereBetween('received_at', [$start, $end])
+            ->get(['amount', 'received_at']);
+        $expenses = Expense::query()
+            ->forCompany($companyId)
+            ->whereBetween('paid_at', [$start, $end])
+            ->get(['amount', 'tax_amount', 'paid_at']);
+        $supplierPayments = SupplierPayment::query()
+            ->forCompany($companyId)
+            ->whereBetween('payment_date', [$start->toDateString(), $end->toDateString()])
+            ->get(['amount', 'payment_date']);
+
+        return collect(range(11, 0))
+            ->map(function (int $offset) use ($clientPayments, $expenses, $supplierPayments): array {
+                $month = now()->startOfMonth()->subMonths($offset);
+                $monthKey = $month->format('Y-m');
+                $inflow = $clientPayments
+                    ->filter(fn (Payment $payment): bool => $payment->received_at?->format('Y-m') === $monthKey)
+                    ->sum(fn (Payment $payment): float => (float) $payment->amount);
+                $expenseOutflow = $expenses
+                    ->filter(fn (Expense $expense): bool => $expense->paid_at?->format('Y-m') === $monthKey)
+                    ->sum(fn (Expense $expense): float => (float) $expense->amount + (float) $expense->tax_amount);
+                $supplierOutflow = $supplierPayments
+                    ->filter(fn (SupplierPayment $payment): bool => $payment->payment_date?->format('Y-m') === $monthKey)
+                    ->sum(fn (SupplierPayment $payment): float => (float) $payment->amount);
+
+                return [
+                    'month' => $monthKey,
+                    'label' => $month->format('M'),
+                    'inflow' => (float) $inflow,
+                    'outflow' => (float) $expenseOutflow + (float) $supplierOutflow,
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    private function procurementOverview(int $companyId): array
+    {
+        $statusRows = PurchaseOrder::query()
+            ->forCompany($companyId)
+            ->select('status', DB::raw('count(*) as total'), DB::raw('coalesce(sum(total_amount), 0) as value'))
+            ->groupBy('status')
+            ->orderBy('status')
+            ->get();
+
+        return [
+            'total_po_value' => (float) $statusRows->sum('value'),
+            'statuses' => $statusRows,
+        ];
+    }
+
+    private function pendingApprovalItems(int $companyId): array
+    {
+        $requisitions = PurchaseRequisition::query()
+            ->forCompany($companyId)
+            ->with('project:id,name')
+            ->where('status', 'submitted')
+            ->latest('submitted_at')
+            ->limit(8)
+            ->get()
+            ->map(fn (PurchaseRequisition $item): array => $this->approvalListItem(
+                'Purchase Requisition',
+                $item->title,
+                $item->project?->name,
+                (float) ($item->grand_total ?: $item->total_estimated),
+                $item->priority,
+                $item->submitted_at ?? $item->created_at,
+                $item->required_by,
+            ));
+
+        $supplierInvoices = SupplierInvoice::query()
+            ->forCompany($companyId)
+            ->with('project:id,name')
+            ->where('status', 'submitted')
+            ->latest()
+            ->limit(8)
+            ->get()
+            ->map(fn (SupplierInvoice $item): array => $this->approvalListItem(
+                'Supplier Invoice',
+                $item->invoice_number,
+                $item->project?->name,
+                (float) $item->total_amount,
+                'medium',
+                $item->created_at,
+                $item->due_date,
+            ));
+
+        $clientApprovals = ClientApproval::query()
+            ->forCompany($companyId)
+            ->with('project:id,name')
+            ->where('status', 'submitted')
+            ->latest('submitted_at')
+            ->limit(8)
+            ->get()
+            ->map(fn (ClientApproval $item): array => $this->approvalListItem(
+                'Client Approval',
+                $item->title,
+                $item->project?->name,
+                0,
+                'medium',
+                $item->submitted_at ?? $item->created_at,
+                $item->due_date,
+            ));
+
+        $consultantSubmittals = ConsultantSubmittal::query()
+            ->forCompany($companyId)
+            ->with('project:id,name')
+            ->whereIn('status', ['submitted', 'in_review'])
+            ->latest('submitted_at')
+            ->limit(8)
+            ->get()
+            ->map(fn (ConsultantSubmittal $item): array => $this->approvalListItem(
+                'Consultant Submittal',
+                $item->title,
+                $item->project?->name,
+                0,
+                'medium',
+                $item->submitted_at ?? $item->created_at,
+                $item->due_date,
+            ));
+
+        return $requisitions
+            ->concat($supplierInvoices)
+            ->concat($clientApprovals)
+            ->concat($consultantSubmittals)
+            ->sortByDesc('submitted_at')
+            ->take(8)
+            ->values()
+            ->all();
+    }
+
+    private function approvalListItem(string $type, ?string $title, ?string $project, float $amount, string $priority, mixed $submittedAt, mixed $dueDate): array
+    {
+        return [
+            'type' => $type,
+            'title' => $title ?: $type,
+            'project' => $project,
+            'amount' => $amount,
+            'priority' => $priority,
+            'severity' => $this->approvalSeverity($priority, $amount, $dueDate),
+            'submitted_at' => $submittedAt,
+            'due_date' => $dueDate,
+        ];
+    }
+
+    private function approvalSeverity(string $priority, float $amount, mixed $dueDate): string
+    {
+        if (in_array($priority, ['high', 'critical', 'urgent'], true) || $amount >= 100000) {
+            return 'high';
+        }
+
+        if ($dueDate && now()->startOfDay()->diffInDays($dueDate, false) <= 3) {
+            return 'medium';
+        }
+
+        return 'low';
+    }
+
+    private function inventoryAlerts(int $companyId)
+    {
+        return InventoryItem::query()
+            ->forCompany($companyId)
+            ->whereColumn('quantity_on_hand', '<=', 'reorder_level')
+            ->orderBy('quantity_on_hand')
+            ->limit(8)
+            ->get()
+            ->map(fn (InventoryItem $item): array => [
+                'sku' => $item->sku,
+                'name' => $item->name,
+                'category' => $item->category,
+                'unit' => $item->unit,
+                'quantity_on_hand' => (float) $item->quantity_on_hand,
+                'reorder_level' => (float) $item->reorder_level,
+                'shortage' => max(0, (float) $item->reorder_level - (float) $item->quantity_on_hand),
+            ]);
+    }
+
+    private function workforceAttendance(int $companyId): array
+    {
+        $today = now()->toDateString();
+        $totalWorkers = EmployeeProfile::query()
+            ->forCompany($companyId)
+            ->where('status', 'active')
+            ->count();
+        $presentToday = AttendanceRecord::query()
+            ->forCompany($companyId)
+            ->whereDate('clock_in_at', $today)
+            ->distinct('user_id')
+            ->count('user_id');
+        $onLeave = LeaveRequest::query()
+            ->forCompany($companyId)
+            ->where('status', 'approved')
+            ->whereDate('starts_on', '<=', $today)
+            ->whereDate('ends_on', '>=', $today)
+            ->count();
+        $absent = max(0, $totalWorkers - $presentToday - $onLeave);
+
+        return [
+            'total_workers' => $totalWorkers,
+            'present_today' => $presentToday,
+            'absent_today' => $absent,
+            'on_leave' => $onLeave,
+            'attendance_rate' => $totalWorkers > 0 ? round(($presentToday / $totalWorkers) * 100, 1) : 0,
+            'last_updated_at' => AttendanceRecord::query()->forCompany($companyId)->latest('updated_at')->value('updated_at'),
+        ];
+    }
+
+    private function invoiceSummary(int $companyId): array
+    {
+        $paid = Invoice::query()
+            ->forCompany($companyId)
+            ->where('payment_status', 'paid');
+        $outstanding = Invoice::query()
+            ->forCompany($companyId)
+            ->where('payment_status', '!=', 'paid')
+            ->where('status', '!=', 'draft');
+        $overdue = Invoice::query()
+            ->forCompany($companyId)
+            ->where('payment_status', '!=', 'paid')
+            ->whereDate('due_date', '<', now()->toDateString());
+        $draft = Invoice::query()
+            ->forCompany($companyId)
+            ->where('status', 'draft');
+
+        return [
+            'paid' => ['count' => (clone $paid)->count(), 'amount' => (float) (clone $paid)->sum('total_amount')],
+            'outstanding' => ['count' => (clone $outstanding)->count(), 'amount' => (float) (clone $outstanding)->sum('balance_due')],
+            'overdue' => ['count' => (clone $overdue)->count(), 'amount' => (float) (clone $overdue)->sum('balance_due')],
+            'draft' => ['count' => (clone $draft)->count(), 'amount' => (float) (clone $draft)->sum('total_amount')],
+            'total_invoiced' => (float) Invoice::query()->forCompany($companyId)->sum('total_amount'),
+        ];
+    }
+
+    private function costBreakdown(int $companyId)
+    {
+        $rows = BudgetLine::query()
+            ->forCompany($companyId)
+            ->select('category')
+            ->selectRaw('coalesce(sum(actual_amount), 0) as actual')
+            ->selectRaw('coalesce(sum(committed_amount), 0) as committed')
+            ->selectRaw('coalesce(sum(budget_amount), 0) as budget')
+            ->groupBy('category')
+            ->orderByDesc('actual')
+            ->get();
+        $total = max(0.01, (float) $rows->sum(fn (BudgetLine $line): float => (float) $line->actual));
+
+        return $rows->map(fn (BudgetLine $line): array => [
+            'category' => $line->category,
+            'actual' => (float) $line->actual,
+            'committed' => (float) $line->committed,
+            'budget' => (float) $line->budget,
+            'percent' => round(((float) $line->actual / $total) * 100, 1),
+        ]);
+    }
+
+    private function projectPerformance(int $companyId)
+    {
+        return Project::query()
+            ->forCompany($companyId)
+            ->orderByRaw("case when status = 'active' then 0 when status = 'on_hold' then 1 when status = 'planning' then 2 else 3 end")
+            ->orderBy('target_end_date')
+            ->limit(12)
+            ->get()
+            ->map(fn (Project $project): array => $this->projectPerformanceRow($project));
+    }
+
+    private function projectPerformanceRow(Project $project): array
+    {
+        $budget = (float) $project->budget_total;
+        $actual = (float) $project->actual_cost;
+        $progress = (float) $project->progress_percent;
+        $earnedValue = $budget * ($progress / 100);
+        $plannedProgress = $this->plannedProgressPercent($project);
+
+        return [
+            'id' => $project->id,
+            'code' => $project->code,
+            'project' => $project->name,
+            'status' => $project->status,
+            'health_status' => $project->health_status,
+            'progress_percent' => $progress,
+            'budget' => $budget,
+            'budget_utilized_percent' => $budget > 0 ? round(($actual / $budget) * 100, 1) : 0,
+            'cost_to_date' => $actual,
+            'cost_variance' => $budget - $actual,
+            'schedule_variance_days' => $this->scheduleVarianceDays($project),
+            'spi' => $plannedProgress > 0 ? round($progress / $plannedProgress, 2) : null,
+            'cpi' => $actual > 0 ? round($earnedValue / $actual, 2) : null,
+        ];
+    }
+
+    private function plannedProgressPercent(Project $project): float
+    {
+        if (! $project->start_date || ! $project->target_end_date) {
+            return 0;
+        }
+
+        $start = $project->start_date->startOfDay();
+        $finish = $project->target_end_date->startOfDay();
+        $today = now()->startOfDay();
+        $duration = max(1, $start->diffInDays($finish));
+        $elapsed = max(0, min($duration, $start->diffInDays($today)));
+
+        return round(($elapsed / $duration) * 100, 1);
+    }
+
+    private function scheduleVarianceDays(Project $project): ?int
+    {
+        if (! $project->target_end_date) {
+            return null;
+        }
+
+        $reference = $project->actual_end_date ?: now()->startOfDay();
+
+        return (int) $reference->startOfDay()->diffInDays($project->target_end_date->startOfDay(), false);
+    }
+
+    private function averageDaysToFinish(int $companyId): int
+    {
+        $days = Project::query()
+            ->forCompany($companyId)
+            ->whereIn('status', ['planning', 'active', 'on_hold'])
+            ->whereNotNull('target_end_date')
+            ->get(['target_end_date'])
+            ->map(fn (Project $project): int => (int) now()->startOfDay()->diffInDays($project->target_end_date->startOfDay(), false))
+            ->filter(fn (int $days): bool => $days >= 0);
+
+        return $days->isNotEmpty() ? (int) round($days->average()) : 0;
     }
 
     private function costByCategory(int $companyId)

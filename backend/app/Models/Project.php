@@ -36,6 +36,7 @@ class Project extends Model
         'start_date',
         'target_end_date',
         'actual_end_date',
+        'metadata',
         'created_by',
         'updated_by',
     ];
@@ -51,6 +52,7 @@ class Project extends Model
             'start_date' => 'date',
             'target_end_date' => 'date',
             'actual_end_date' => 'date',
+            'metadata' => 'array',
         ];
     }
 
@@ -89,6 +91,26 @@ class Project extends Model
         return $this->hasMany(PurchaseOrder::class);
     }
 
+    public function procurementRfqs(): HasMany
+    {
+        return $this->hasMany(ProcurementRfq::class);
+    }
+
+    public function goodsReceipts(): HasMany
+    {
+        return $this->hasMany(GoodsReceipt::class);
+    }
+
+    public function supplierInvoices(): HasMany
+    {
+        return $this->hasMany(SupplierInvoice::class);
+    }
+
+    public function supplierContracts(): HasMany
+    {
+        return $this->hasMany(SupplierContract::class);
+    }
+
     public function documents(): HasMany
     {
         return $this->hasMany(Document::class);
@@ -107,5 +129,90 @@ class Project extends Model
     public function fieldIssues(): HasMany
     {
         return $this->hasMany(FieldIssue::class);
+    }
+
+    public function inspections(): HasMany
+    {
+        return $this->hasMany(Inspection::class);
+    }
+
+    public function nonConformanceReports(): HasMany
+    {
+        return $this->hasMany(NonConformanceReport::class);
+    }
+
+    public function safetyIncidents(): HasMany
+    {
+        return $this->hasMany(SafetyIncident::class);
+    }
+
+    public function safetyObservations(): HasMany
+    {
+        return $this->hasMany(SafetyObservation::class);
+    }
+
+    public function toolboxTalks(): HasMany
+    {
+        return $this->hasMany(ToolboxTalk::class);
+    }
+
+    public function workPermits(): HasMany
+    {
+        return $this->hasMany(WorkPermit::class);
+    }
+
+    public function clientApprovals(): HasMany
+    {
+        return $this->hasMany(ClientApproval::class);
+    }
+
+    public function consultantSubmittals(): HasMany
+    {
+        return $this->hasMany(ConsultantSubmittal::class);
+    }
+
+    public function portalWorkItems(): HasMany
+    {
+        return $this->hasMany(PortalWorkItem::class);
+    }
+
+    public function invoices(): HasMany
+    {
+        return $this->hasMany(Invoice::class);
+    }
+
+    public function expenses(): HasMany
+    {
+        return $this->hasMany(Expense::class);
+    }
+
+    public function equipmentAssignments(): HasMany
+    {
+        return $this->hasMany(EquipmentAssignment::class);
+    }
+
+    public function equipmentAssets(): HasMany
+    {
+        return $this->hasMany(EquipmentAsset::class, 'current_project_id');
+    }
+
+    public function fuelLogs(): HasMany
+    {
+        return $this->hasMany(FuelLog::class);
+    }
+
+    public function workforceAllocations(): HasMany
+    {
+        return $this->hasMany(WorkforceAllocation::class);
+    }
+
+    public function attendanceRecords(): HasMany
+    {
+        return $this->hasMany(AttendanceRecord::class);
+    }
+
+    public function workforceTimesheets(): HasMany
+    {
+        return $this->hasMany(WorkforceTimesheet::class);
     }
 }

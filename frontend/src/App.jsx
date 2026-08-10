@@ -7,6 +7,7 @@ import {
   Calculator,
   CalendarDays,
   CheckCircle2,
+  ChevronRight,
   Clock3,
   ClipboardList,
   Download,
@@ -28,6 +29,7 @@ import {
   ShieldCheck,
   Sun,
   Truck,
+  Trash2,
   Upload,
   Users,
   WalletCards,
@@ -39,6 +41,8 @@ import {
   CartesianGrid,
   Cell,
   Legend,
+  Line,
+  LineChart,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -58,7 +62,7 @@ const navItems = [
   { id: 'projects', label: 'Projects', icon: FolderKanban, permissions: ['projects.manage'] },
   { id: 'procurement', label: 'Procurement', icon: Truck, permissions: ['procurement.manage'] },
   { id: 'inventory', label: 'Inventory', icon: Package, permissions: ['inventory.manage'] },
-  { id: 'field', label: 'Field', icon: MapPinned, permissions: ['field.manage', 'attendance.manage'] },
+  { id: 'field', label: 'Site Management', icon: MapPinned, permissions: ['field.manage', 'attendance.manage'] },
   { id: 'finance', label: 'Finance', icon: WalletCards, permissions: ['finance.manage'] },
   { id: 'people', label: 'HR & Workforce', icon: Users, permissions: ['payroll.manage'] },
   { id: 'equipment', label: 'Equipment', icon: Truck, permissions: ['equipment.manage'] },
@@ -79,7 +83,7 @@ const accessCategories = [
   { id: 'projects', label: 'Projects', description: 'Project records, tasks, budgets, and schedules.', permissions: ['projects.manage'] },
   { id: 'procurement', label: 'Procurement', description: 'Requests, RFQs, quotations, POs, GRNs, invoices, and supplier contracts.', permissions: ['procurement.manage', 'procurement.approve', 'suppliers.manage'] },
   { id: 'inventory', label: 'Inventory', description: 'Warehouses, stock items, stock movements, and reorder controls.', permissions: ['inventory.manage'] },
-  { id: 'field', label: 'Field App & Attendance', description: 'Daily reports, site issues, clock-in, and clock-out.', permissions: ['field.manage', 'attendance.manage'] },
+  { id: 'field', label: 'Site Management & Attendance', description: 'Daily reports, site issues, clock-in, and clock-out.', permissions: ['field.manage', 'attendance.manage'] },
   { id: 'finance', label: 'Finance', description: 'Invoices, payments, expenses, journals, and financial approvals.', permissions: ['finance.manage'] },
   { id: 'people', label: 'HR & Workforce', description: 'Recruitment, employees, workforce allocation, attendance, payroll, training, and HR records.', permissions: ['payroll.manage'] },
   { id: 'equipment', label: 'Equipment', description: 'Assets, assignments, maintenance, and fuel logs.', permissions: ['equipment.manage'] },
@@ -92,6 +96,110 @@ const accessCategories = [
 ]
 
 const allAccessPermissions = [...new Set(accessCategories.flatMap((category) => category.permissions))]
+
+const africanCountryNames = {
+  DZ: 'Algeria',
+  AO: 'Angola',
+  BJ: 'Benin',
+  BW: 'Botswana',
+  BF: 'Burkina Faso',
+  BI: 'Burundi',
+  CV: 'Cabo Verde',
+  CM: 'Cameroon',
+  CF: 'Central African Republic',
+  TD: 'Chad',
+  KM: 'Comoros',
+  CG: 'Republic of the Congo',
+  CD: 'Democratic Republic of the Congo',
+  CI: "Cote d'Ivoire",
+  DJ: 'Djibouti',
+  EG: 'Egypt',
+  GQ: 'Equatorial Guinea',
+  ER: 'Eritrea',
+  SZ: 'Eswatini',
+  ET: 'Ethiopia',
+  GA: 'Gabon',
+  GM: 'Gambia',
+  GH: 'Ghana',
+  GN: 'Guinea',
+  GW: 'Guinea-Bissau',
+  KE: 'Kenya',
+  LS: 'Lesotho',
+  LR: 'Liberia',
+  LY: 'Libya',
+  MG: 'Madagascar',
+  MW: 'Malawi',
+  ML: 'Mali',
+  MR: 'Mauritania',
+  MU: 'Mauritius',
+  MA: 'Morocco',
+  MZ: 'Mozambique',
+  NA: 'Namibia',
+  NE: 'Niger',
+  NG: 'Nigeria',
+  RW: 'Rwanda',
+  ST: 'Sao Tome and Principe',
+  SN: 'Senegal',
+  SC: 'Seychelles',
+  SL: 'Sierra Leone',
+  SO: 'Somalia',
+  ZA: 'South Africa',
+  SS: 'South Sudan',
+  SD: 'Sudan',
+  TZ: 'Tanzania',
+  TG: 'Togo',
+  TN: 'Tunisia',
+  UG: 'Uganda',
+  ZM: 'Zambia',
+  ZW: 'Zimbabwe',
+  EH: 'Western Sahara',
+}
+
+const africanCurrencyNames = {
+  DZD: 'Algerian Dinar',
+  AOA: 'Angolan Kwanza',
+  XOF: 'West African CFA Franc',
+  BWP: 'Botswana Pula',
+  BIF: 'Burundian Franc',
+  CVE: 'Cabo Verdean Escudo',
+  XAF: 'Central African CFA Franc',
+  KMF: 'Comorian Franc',
+  CDF: 'Congolese Franc',
+  DJF: 'Djiboutian Franc',
+  EGP: 'Egyptian Pound',
+  ERN: 'Eritrean Nakfa',
+  SZL: 'Eswatini Lilangeni',
+  ETB: 'Ethiopian Birr',
+  GMD: 'Gambian Dalasi',
+  GHS: 'Ghanaian Cedi',
+  GNF: 'Guinean Franc',
+  KES: 'Kenyan Shilling',
+  LSL: 'Lesotho Loti',
+  LRD: 'Liberian Dollar',
+  LYD: 'Libyan Dinar',
+  MGA: 'Malagasy Ariary',
+  MWK: 'Malawian Kwacha',
+  MRU: 'Mauritanian Ouguiya',
+  MUR: 'Mauritian Rupee',
+  MAD: 'Moroccan Dirham',
+  MZN: 'Mozambican Metical',
+  NAD: 'Namibian Dollar',
+  NGN: 'Nigerian Naira',
+  RWF: 'Rwandan Franc',
+  STN: 'Sao Tome and Principe Dobra',
+  SCR: 'Seychellois Rupee',
+  SLE: 'Sierra Leonean Leone',
+  SOS: 'Somali Shilling',
+  ZAR: 'South African Rand',
+  SSP: 'South Sudanese Pound',
+  SDG: 'Sudanese Pound',
+  TZS: 'Tanzanian Shilling',
+  TND: 'Tunisian Dinar',
+  UGX: 'Ugandan Shilling',
+  ZMW: 'Zambian Kwacha',
+  ZWL: 'Zimbabwean Dollar',
+  USD: 'United States Dollar',
+}
 
 const emptyProcurementData = { summary: {}, recent_activity: [], requisitions: [], rfqs: [], quotations: [], purchase_orders: [], goods_receipts: [], quality_inspections: [], supplier_invoices: [], payments: [], contracts: [], traceability: [], reports: {}, settings: {} }
 const emptySalesData = { leads: [], opportunities: [], tenders: [], estimates: [], pricing_items: [] }
@@ -348,13 +456,59 @@ const statusColor = {
 
 const emptyProjectForm = {
   branch_id: '',
+  client_id: '',
   client_name: '',
+  code: '',
   name: '',
+  description: '',
   status: 'active',
+  health_status: 'on_track',
+  risk_level: 'medium',
+  project_type: '',
+  sector: '',
+  contract_type: '',
+  priority: 'normal',
   contract_value: '',
+  currency: 'GHS',
+  approved_variations: '',
+  revised_contract_value: '',
+  retention_percent: '',
+  advance_payment: '',
+  payment_terms: '',
+  tax_configuration: '',
+  funding_source: '',
   start_date: '',
+  planned_start_date: '',
+  actual_start_date: '',
   target_end_date: '',
+  contract_completion_date: '',
+  defects_liability_end_date: '',
+  country: 'GH',
+  region: '',
+  city: '',
   site_address: '',
+  gps_coordinates: '',
+  site_map_url: '',
+  project_director: '',
+  project_manager: '',
+  site_manager: '',
+  quantity_surveyor: '',
+  project_engineer: '',
+  hse_manager: '',
+  qa_qc_manager: '',
+  planner: '',
+  commercial_manager: '',
+  cost_code_structure: '',
+  wbs_template: '',
+  budget_template: '',
+  approval_workflow: '',
+  working_calendar: '',
+  default_warehouse: '',
+  default_document_folders: '',
+  linked_crm_opportunity: '',
+  linked_tender: '',
+  linked_estimate: '',
+  linked_contract: '',
 }
 
 const emptyTaskForm = {
@@ -800,6 +954,9 @@ function App() {
   })
   const [mfaChallenge, setMfaChallenge] = useState(null)
   const [activeView, setActiveView] = useState(cloudConsolePortal ? 'platform' : 'dashboard')
+  const [cloudConsoleLayer, setCloudConsoleLayer] = useState('platform')
+  const [cloudConsoleTab, setCloudConsoleTab] = useState('executive')
+  const [expandedCloudConsoleLayers, setExpandedCloudConsoleLayers] = useState(() => new Set())
   const [user, setUser] = useState(null)
   const [dashboard, setDashboard] = useState(null)
   const [organization, setOrganization] = useState(null)
@@ -861,7 +1018,7 @@ function App() {
     branch: { code: '', name: '', city: '', country: 'GH' },
     client: { id: '', name: '', contact_name: '', email: '', phone: '', status: 'active' },
     supplier: { id: '', name: '', contact_name: '', email: '', phone: '', rating: 4, lead_time_days: 7, status: 'active' },
-    user: { id: '', name: '', email: '', password: '', branch_id: '', role_id: '', permissions: [], status: 'active' },
+    user: { id: '', name: '', email: '', password: '', branch_id: '', role_id: '', role_name: '', permissions: [], status: 'active' },
   })
 
   const branches = organization?.company?.branches || emptyList
@@ -871,7 +1028,6 @@ function App() {
   const users = organization?.company?.users || emptyList
   const currentUserId = user?.id || null
   const firstBranchId = branches[0]?.id || ''
-  const firstRoleId = roles[0]?.id || ''
   const allowedNavItems = useMemo(() => accessibleNavItems(user, { cloudConsole: cloudConsolePortal }), [cloudConsolePortal, user])
   const persistedCompanyTheme = normalizeTheme(organization?.company?.settings?.appearance?.theme)
   const adminSelectedTheme = canAdministerRecords(user) ? adminForms.company?.appearance_theme : null
@@ -990,19 +1146,7 @@ function App() {
       }))
     }
 
-    if (firstRoleId && !adminForms.user.role_id) {
-      const role = roles.find((item) => String(item.id) === String(firstRoleId))
-
-      setAdminForms((current) => ({
-        ...current,
-        user: {
-          ...current.user,
-          role_id: firstRoleId,
-          permissions: normalizePermissionList(current.user.permissions).length > 0 ? current.user.permissions : rolePermissions(role),
-        },
-      }))
-    }
-  }, [firstBranchId, firstRoleId, roles, projectForm.branch_id, leadForm.branch_id, inventoryForms.warehouse.branch_id, peopleForms.employee.branch_id, peopleForms.vacancy.branch_id, peopleForms.shift.branch_id, peopleForms.payroll.branch_id, equipmentForms.asset.branch_id, adminForms.user.branch_id, adminForms.user.role_id, adminForms.user.permissions])
+  }, [firstBranchId, projectForm.branch_id, leadForm.branch_id, inventoryForms.warehouse.branch_id, peopleForms.employee.branch_id, peopleForms.vacancy.branch_id, peopleForms.shift.branch_id, peopleForms.payroll.branch_id, equipmentForms.asset.branch_id, adminForms.user.branch_id])
 
   async function refreshWorkspace(options = {}) {
     if (refreshInFlight.current && !options.force) {
@@ -1103,7 +1247,7 @@ function App() {
         loadIf('Drawings', !cloudConsolePortal && needsDocuments, api.drawings, { data: [] }),
         loadIf('CRM, Tendering, and Estimating', !cloudConsolePortal && can(['crm.manage', 'tenders.manage', 'estimating.manage']), api.sales, emptySalesData),
         loadIf('Inventory', !cloudConsolePortal && can(['inventory.manage']), api.inventory, emptyInventoryData),
-        loadIf('Field and Attendance', !cloudConsolePortal && can(['field.manage', 'attendance.manage']), api.field, emptyFieldData),
+        loadIf('Site Management and Attendance', !cloudConsolePortal && can(['field.manage', 'attendance.manage']), api.field, emptyFieldData),
         loadIf('Finance', !cloudConsolePortal && can(['finance.manage']), api.finance, emptyFinanceData),
         loadIf('HR and Workforce', !cloudConsolePortal && can(['payroll.manage']), api.people, emptyPeopleData),
         loadIf('Equipment', !cloudConsolePortal && can(['equipment.manage']), api.equipment, emptyEquipmentData),
@@ -1328,13 +1472,27 @@ function App() {
 
   async function createProject(event) {
     event.preventDefault()
+    const projectNumericFields = [
+      'contract_value',
+      'approved_variations',
+      'revised_contract_value',
+      'retention_percent',
+      'advance_payment',
+    ]
+    const payload = {
+      ...projectForm,
+      branch_id: Number(projectForm.branch_id),
+      client_id: projectForm.client_id ? Number(projectForm.client_id) : null,
+    }
+
+    projectNumericFields.forEach((field) => {
+      payload[field] = projectForm[field] === '' || projectForm[field] === null || projectForm[field] === undefined
+        ? null
+        : Number(projectForm[field])
+    })
+
     const result = await runAction(
-      () =>
-        api.createProject({
-          ...projectForm,
-          branch_id: Number(projectForm.branch_id),
-          contract_value: Number(projectForm.contract_value || 0),
-        }),
+      () => api.createProject(payload),
       'Project created.',
     )
 
@@ -1687,7 +1845,7 @@ function App() {
       if (value !== undefined && value !== null && value !== '') formData.append(key, value)
     })
 
-    await runAction(() => api.createFieldIssue(form.project_id, formData), 'Field issue created.')
+    await runAction(() => api.createFieldIssue(form.project_id, formData), 'Site issue created.')
     setFieldForms((current) => ({ ...current, issue: { ...emptyFieldForms.issue, project_id: form.project_id } }))
     event.target.reset()
   }
@@ -2205,7 +2363,7 @@ function App() {
   }
 
   async function createPlatformCompany(event) {
-    event.preventDefault()
+    event?.preventDefault?.()
     const form = platformForms.company
     const payload = {
       ...form,
@@ -2281,6 +2439,14 @@ function App() {
 
   async function restorePlatformCompany(company) {
     await runAction(() => api.restorePlatformCompany(company.id), 'Company restored.')
+  }
+
+  async function deleteArchivedPlatformCompany(company) {
+    if (!window.confirm(`Permanently delete ${company.name}? This cannot be undone and will remove the account, users, subscriptions, and tenant files.`)) {
+      return
+    }
+
+    await runAction(() => api.deleteArchivedPlatformCompany(company.id), 'Company permanently deleted.')
   }
 
   async function searchPlatformAdmin(query) {
@@ -2782,6 +2948,64 @@ function App() {
       : activeView === 'platform'
         ? 'Navkwa Build Cloud Console'
         : navItems.find((item) => item.id === activeView)?.label || 'Workspace'
+  const cloudConsoleLayers = platformAdmin.catalog?.console_layers || []
+  const sidebarLayerIconMap = { platform: BarChart3, customers: Building2, product: Layers3, security: ShieldCheck, engineering: Workflow }
+  const sidebarTabIconMap = {
+    executive: BarChart3,
+    'operations-center': BarChart3,
+    reports: ClipboardList,
+    companies: Building2,
+    subscriptions: WalletCards,
+    'customer-success': Handshake,
+    support: AlertTriangle,
+    billing: WalletCards,
+    payments: WalletCards,
+    features: Layers3,
+    deployment: Upload,
+    marketplace: Package,
+    ai: BarChart3,
+    localization: Globe2,
+    security: ShieldCheck,
+    audit: Clock3,
+    backups: Download,
+    data: FileText,
+    identity: Globe2,
+    roles: ShieldCheck,
+    users: Users,
+    monitoring: BarChart3,
+    automation: Workflow,
+    integrations: Layers3,
+    developer: Workflow,
+    notifications: Send,
+    usage: BarChart3,
+    licenses: CheckCircle2,
+    settings: Settings,
+  }
+
+  function toggleCloudConsoleLayer(layer) {
+    setActiveView('platform')
+    if (cloudConsoleLayer !== layer.id) {
+      setCloudConsoleLayer(layer.id)
+      setCloudConsoleTab(layer.primary_tab || layer.items?.[0]?.id || 'executive')
+    }
+    setExpandedCloudConsoleLayers((current) => {
+      const next = new Set(current)
+      if (next.has(layer.id)) next.delete(layer.id)
+      else next.add(layer.id)
+      return next
+    })
+  }
+
+  function openCloudConsoleTab(layer, item) {
+    setActiveView('platform')
+    setCloudConsoleLayer(layer.id)
+    setCloudConsoleTab(item.id)
+    setExpandedCloudConsoleLayers((current) => {
+      const next = new Set(current)
+      next.add(layer.id)
+      return next
+    })
+  }
 
   return (
     <div className="app-shell">
@@ -2796,17 +3020,61 @@ function App() {
         <nav className="nav-list" aria-label="Primary">
           {allowedNavItems.map((item) => {
             const Icon = item.icon
+            const isCloudConsoleItem = item.id === 'platform'
             return (
-              <button
-                type="button"
-                key={item.id}
-                className={activeView === item.id ? 'active' : ''}
-                onClick={() => setActiveView(item.id)}
-                title={item.label}
-              >
-                <Icon size={18} />
-                <span>{item.label}</span>
-              </button>
+              <div key={item.id} className={`nav-item-shell ${isCloudConsoleItem ? 'cloud-console-nav-shell' : ''}`}>
+                <button
+                  type="button"
+                  className={activeView === item.id ? 'active' : ''}
+                  onClick={() => setActiveView(item.id)}
+                  title={item.label}
+                >
+                  <Icon size={18} />
+                  <span>{item.label}</span>
+                </button>
+
+                {isCloudConsoleItem && activeView === 'platform' && cloudConsoleLayers.length > 0 && (
+                  <div className="sidebar-cloud-nav" aria-label="Cloud Console sections">
+                    {cloudConsoleLayers.map((layer) => {
+                      const LayerIcon = sidebarLayerIconMap[layer.id] || BarChart3
+                      const expanded = expandedCloudConsoleLayers.has(layer.id)
+                      return (
+                        <div key={layer.id} className={`sidebar-cloud-nav-group ${expanded ? 'expanded' : ''}`}>
+                          <button
+                            type="button"
+                            className={`sidebar-cloud-nav-trigger ${cloudConsoleLayer === layer.id ? 'active' : ''}`}
+                            onClick={() => toggleCloudConsoleLayer(layer)}
+                            aria-expanded={expanded}
+                          >
+                            <LayerIcon size={16} />
+                            <span>{layer.label}</span>
+                            <ChevronRight className="sidebar-cloud-nav-arrow" size={15} />
+                          </button>
+
+                          {expanded && (
+                            <div className="sidebar-cloud-nav-children">
+                              {(layer.items || []).map((child) => {
+                                const ChildIcon = sidebarTabIconMap[child.id] || BarChart3
+                                return (
+                                  <button
+                                    key={child.id}
+                                    type="button"
+                                    className={`sidebar-cloud-nav-child ${cloudConsoleLayer === layer.id && cloudConsoleTab === child.id ? 'active' : ''}`}
+                                    onClick={() => openCloudConsoleTab(layer, child)}
+                                  >
+                                    <ChildIcon size={14} />
+                                    <span>{child.label}</span>
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
             )
           })}
         </nav>
@@ -2854,6 +3122,11 @@ function App() {
             saveCompanyAccount={savePlatformCompanyAccount}
             archiveCompany={archivePlatformCompany}
             restoreCompany={restorePlatformCompany}
+            deleteArchivedCompany={deleteArchivedPlatformCompany}
+            activeLayer={cloudConsoleLayer}
+            activeTab={cloudConsoleTab}
+            setActiveLayer={setCloudConsoleLayer}
+            setActiveTab={setCloudConsoleTab}
             createPlan={createPlatformPlan}
             deletePlan={deletePlatformPlan}
             saveSubscription={savePlatformSubscription}
@@ -2915,6 +3188,8 @@ function App() {
         {activeView === 'projects' && (
           <ProjectsView
             branches={branches}
+            clients={clients}
+            users={users}
             projects={projects}
             selectedProject={selectedProject}
             selectedProjectId={selectedProjectId}
@@ -3334,6 +3609,7 @@ function PlatformAdminView({
   saveCompanyAccount,
   archiveCompany,
   restoreCompany,
+  deleteArchivedCompany,
   createPlan,
   deletePlan,
   saveSubscription,
@@ -3345,6 +3621,10 @@ function PlatformAdminView({
   saveStaffUser,
   deleteStaffUser,
   saveProfile,
+  activeLayer = 'platform',
+  activeTab = 'executive',
+  setActiveLayer,
+  setActiveTab,
   startMfaSetup,
   enableMfa,
   disableMfa,
@@ -3359,12 +3639,11 @@ function PlatformAdminView({
   searchPlatform,
   runAction,
 }) {
-  const [activeTab, setActiveTab] = useState('executive')
-  const [activeLayer, setActiveLayer] = useState('platform')
   const [selectedCompanyId, setSelectedCompanyId] = useState('')
   const [companyWorkspaceTab, setCompanyWorkspaceTab] = useState('overview')
   const [wizardOpen, setWizardOpen] = useState(false)
   const [wizardStep, setWizardStep] = useState(1)
+  const [wizardInstance, setWizardInstance] = useState(0)
   const [searchQuery, setSearchQuery] = useState('')
   const companies = useMemo(() => platform.companies || [], [platform.companies])
   const archivedCompanies = useMemo(() => platform.archived_companies || [], [platform.archived_companies])
@@ -3392,7 +3671,6 @@ function PlatformAdminView({
   const platformPermissions = catalog.platform_permissions?.length
     ? catalog.platform_permissions
     : [{ key: 'platform.manage', label: 'Cloud Console Access', description: 'Can sign in to Navkwa Build Cloud Console.' }]
-  const layerIconMap = { platform: BarChart3, customers: Building2, product: Layers3, security: ShieldCheck, engineering: Workflow, executive: BarChart3, operations: Building2, intelligence: ActivityIcon }
   const tabIconMap = {
     executive: BarChart3,
     'operations-center': ActivityIcon,
@@ -3455,8 +3733,6 @@ function PlatformAdminView({
   const impersonationCompany = companies.find((company) => String(company.id) === String(forms.impersonation.company_id))
   const selectedCompanyUsers = impersonationCompany?.users || []
   const selectedCompanyFeatures = featureCompany?.enabled_features || []
-  const consoleLayers = catalog.console_layers || []
-  const activeLayerConfig = consoleLayers.find((layer) => layer.id === activeLayer) || consoleLayers[0]
   const productFeatures = featureFlags.filter((flag) => flag.category !== 'module')
   const platformPermissionSummary = (permissions = []) => {
     const normalized = normalizePermissionList(permissions)
@@ -3499,6 +3775,8 @@ function PlatformAdminView({
   const roleRows = companies.flatMap((company) => (company.roles || []).map((role) => [company.name, role.name, role.slug, (role.permissions || []).includes('*') ? 'All tenant access' : `${(role.permissions || []).length} permissions`, role.is_system ? 'System' : 'Custom']))
   const catalogCountries = catalog.countries || []
   const catalogCurrencies = catalog.currencies || []
+  const countryOptions = useMemo(() => catalogCountries.map((country) => ({ value: country, label: countryName(country), meta: country })), [catalogCountries])
+  const currencyOptions = useMemo(() => catalogCurrencies.map((currency) => ({ value: currency, label: currencyName(currency), meta: currency })), [catalogCurrencies])
   const catalogCompanyStatuses = catalog.statuses || []
   const catalogPlanStatuses = catalog.plan_statuses || []
   const catalogSubscriptionStatuses = catalog.subscription_statuses || []
@@ -3705,15 +3983,11 @@ function PlatformAdminView({
     }))
   }, [forms.company.enabled_feature_keys, forms.company.subscription_plan_id, plans, setPlatformForms])
 
-  function activateLayer(layer) {
-    setActiveLayer(layer.id)
-    setActiveTab(layer.primary_tab || layer.items?.[0]?.id || 'executive')
-  }
-
-  function activateTab(tabId) {
-    setActiveTab(tabId)
-    if (tabId === 'companies') setCompanyWorkspaceTab('overview')
-  }
+  useEffect(() => {
+    if (activeTab === 'companies') {
+      setCompanyWorkspaceTab('overview')
+    }
+  }, [activeTab])
 
   async function submitSearch(event) {
     event.preventDefault()
@@ -3778,6 +4052,22 @@ function PlatformAdminView({
       ...current,
       company: { ...current.company, subscription_plan_id: planId, enabled_feature_keys: [...(plan.modules || []), ...(plan.features || [])] },
     }))
+  }
+
+  function openProvisioningWizard() {
+    const plan = plans.find((item) => item.code === 'professional') || plans[0]
+    setPlatformForms((current) => ({
+      ...current,
+      company: {
+        ...emptyPlatformForms.company,
+        subscription_plan_id: plan?.id ? String(plan.id) : '',
+        enabled_feature_keys: plan ? [...(plan.modules || []), ...(plan.features || [])] : [],
+      },
+      branding: emptyPlatformForms.branding,
+    }))
+    setWizardStep(1)
+    setWizardInstance((current) => current + 1)
+    setWizardOpen(true)
   }
 
   function selectCompanyFor(section) {
@@ -4250,12 +4540,8 @@ function PlatformAdminView({
             <option value="">No plan</option>
             {plans.map((plan) => <option key={plan.id} value={plan.id}>{plan.name}</option>)}
           </Select>
-          <Select label="Country" name="country" value={forms.company_account.country} onChange={setPlatformForm('company_account')}>
-            {catalogCountries.map((country) => <option key={country} value={country}>{country}</option>)}
-          </Select>
-          <Select label="Currency" name="currency" value={forms.company_account.currency} onChange={setPlatformForm('company_account')}>
-            {catalogCurrencies.map((currency) => <option key={currency} value={currency}>{currency}</option>)}
-          </Select>
+          <PickerField label="Country" name="country" value={forms.company_account.country} options={countryOptions} onChange={setPlatformForm('company_account')} searchPlaceholder="Search countries" />
+          <PickerField label="Currency" name="currency" value={forms.company_account.currency} options={currencyOptions} onChange={setPlatformForm('company_account')} searchPlaceholder="Search currencies" />
           <Field label="City" name="city" value={forms.company_account.city} onChange={setPlatformForm('company_account')} />
           <Field label="Address" name="address" value={forms.company_account.address} onChange={setPlatformForm('company_account')} />
           <Field label="Phone" name="phone" value={forms.company_account.phone} onChange={setPlatformForm('company_account')} />
@@ -4416,7 +4702,7 @@ function PlatformAdminView({
               <strong>Companies</strong>
               <span>{companies.length} active</span>
             </div>
-            <button type="button" className="table-action" onClick={() => setWizardOpen(true)}><Plus size={14} />Provision</button>
+            <button type="button" className="table-action" onClick={openProvisioningWizard}><Plus size={14} />Provision</button>
           </div>
           {companies.map((company) => (
             <button key={company.id} type="button" className={String(selectedCompany?.id) === String(company.id) ? 'active' : ''} onClick={() => selectWorkspaceCompany(company.id)}>
@@ -4441,7 +4727,10 @@ function PlatformAdminView({
                     <span>{company.name}</span>
                     <small>{company.tenant_key} | {shortDate(company.deleted_at)}</small>
                   </div>
-                  <button type="button" className="table-action" onClick={() => restoreCompany(company)}><RefreshCcw size={14} />Reinstate</button>
+                  <div className="cloud-archived-actions">
+                    <button type="button" className="table-action" onClick={() => restoreCompany(company)}><RefreshCcw size={14} />Reinstate</button>
+                    <button type="button" className="table-action danger" onClick={() => deleteArchivedCompany(company)}><Trash2 size={14} />Delete</button>
+                  </div>
                 </article>
               ))
             ) : (
@@ -4490,13 +4779,19 @@ function PlatformAdminView({
     const steps = ['Company Information', 'Subscription', 'Modules', 'Branding', 'Administrator', 'Review']
     const moduleFlags = featureFlags.filter((flag) => flag.category === 'module')
     const selectedKeys = new Set(forms.company.enabled_feature_keys || [])
+    const provisioningReady = Boolean(
+      forms.company.name?.trim()
+      && forms.company.country
+      && forms.company.currency
+      && forms.company.primary_contact_name?.trim()
+      && forms.company.primary_contact_email?.trim(),
+    )
 
     return (
       <section className="cloud-wizard">
         <div className="cloud-wizard-card">
           <header>
             <div>
-              <span>Tenant Provisioning Wizard</span>
               <h2>{steps[wizardStep - 1]}</h2>
             </div>
             <button type="button" className="table-action" onClick={() => setWizardOpen(false)}>Close</button>
@@ -4505,13 +4800,17 @@ function PlatformAdminView({
             {steps.map((step, index) => <button key={step} type="button" className={wizardStep === index + 1 ? 'active' : ''} onClick={() => setWizardStep(index + 1)}>{index + 1}</button>)}
           </div>
 
-          <form className="form-grid two" onSubmit={createCompany}>
+          <form key={wizardInstance} className="form-grid two" autoComplete="off" onSubmit={(event) => event.preventDefault()}>
+            <div className="cloud-autofill-decoys" aria-hidden="true">
+              <input type="text" name={`provisioning-decoy-username-${wizardInstance}`} autoComplete="username" tabIndex={-1} defaultValue="" />
+              <input type="password" name={`provisioning-decoy-password-${wizardInstance}`} autoComplete="current-password" tabIndex={-1} defaultValue="" />
+            </div>
             {wizardStep === 1 && (
               <>
                 <Field label="Company Name" name="name" value={forms.company.name} onChange={setPlatformForm('company')} required />
                 <Field label="Industry" name="industry" value={forms.company.industry} onChange={setPlatformForm('company')} />
-                <Select label="Country" name="country" value={forms.company.country} onChange={setPlatformForm('company')}>{catalogCountries.map((country) => <option key={country} value={country}>{country}</option>)}</Select>
-                <Select label="Currency" name="currency" value={forms.company.currency} onChange={setPlatformForm('company')}>{catalogCurrencies.map((currency) => <option key={currency} value={currency}>{currency}</option>)}</Select>
+                <PickerField label="Country" name="country" value={forms.company.country} options={countryOptions} onChange={setPlatformForm('company')} searchPlaceholder="Search countries" />
+                <PickerField label="Currency" name="currency" value={forms.company.currency} options={currencyOptions} onChange={setPlatformForm('company')} searchPlaceholder="Search currencies" />
                 <Field label="City" name="city" value={forms.company.city} onChange={setPlatformForm('company')} />
                 <Field label="Timezone" name="timezone" value={forms.company.timezone} onChange={setPlatformForm('company')} />
               </>
@@ -4543,10 +4842,10 @@ function PlatformAdminView({
             )}
             {wizardStep === 5 && (
               <>
-                <Field label="Primary Contact" name="primary_contact_name" value={forms.company.primary_contact_name} onChange={setPlatformForm('company')} required />
-                <Field label="Contact Email" type="email" name="primary_contact_email" value={forms.company.primary_contact_email} onChange={setPlatformForm('company')} required />
-                <Field label="Contact Phone" name="primary_contact_phone" value={forms.company.primary_contact_phone} onChange={setPlatformForm('company')} />
-                <Field label="Temporary Password" type="password" name="admin_password" value={forms.company.admin_password} onChange={setPlatformForm('company')} placeholder="Auto-generated if blank" />
+                <Field label="Primary Admin" name="primary_contact_name" value={forms.company.primary_contact_name} onChange={setPlatformForm('company')} autoComplete="off" required />
+                <Field label="Admin Email" type="email" name="primary_contact_email" value={forms.company.primary_contact_email} onChange={setPlatformForm('company')} autoComplete={`section-provisioning-${wizardInstance} new-password`} required />
+                <Field label="Admin Phone" name="primary_contact_phone" value={forms.company.primary_contact_phone} onChange={setPlatformForm('company')} inputMode="tel" autoComplete="off" />
+                <Field label="Temporary Password" type="password" name="admin_password" value={forms.company.admin_password} onChange={setPlatformForm('company')} placeholder="Auto-generated if blank" autoComplete={`section-provisioning-${wizardInstance} new-password`} />
               </>
             )}
             {wizardStep === 6 && (
@@ -4562,7 +4861,15 @@ function PlatformAdminView({
               {wizardStep < steps.length ? (
                 <button type="button" className="primary-action" onClick={() => setWizardStep((current) => Math.min(steps.length, current + 1))}>Next</button>
               ) : (
-                <button type="submit" className="primary-action"><Plus size={17} />Provision company</button>
+                <button
+                  type="button"
+                  className="primary-action"
+                  disabled={!provisioningReady}
+                  title={provisioningReady ? 'Provision Company' : 'Complete company and primary admin details first'}
+                  onClick={createCompany}
+                >
+                  <Plus size={17} />Provision Company
+                </button>
               )}
             </div>
           </form>
@@ -4679,9 +4986,7 @@ function PlatformAdminView({
             <Select label="Status" name="status" value={forms.plan.status} onChange={setPlatformForm('plan')}>
               {catalogPlanStatuses.filter((status) => status !== 'archived').map((status) => <option key={status} value={status}>{labelize(status)}</option>)}
             </Select>
-            <Select label="Currency" name="currency" value={forms.plan.currency} onChange={setPlatformForm('plan')}>
-              {catalogCurrencies.map((currency) => <option key={currency} value={currency}>{currency}</option>)}
-            </Select>
+            <PickerField label="Currency" name="currency" value={forms.plan.currency} options={currencyOptions} onChange={setPlatformForm('plan')} searchPlaceholder="Search currencies" />
             <Field label="Monthly Price" type="number" name="monthly_price" value={forms.plan.monthly_price} onChange={setPlatformForm('plan')} />
             <Field label="Yearly Price" type="number" name="yearly_price" value={forms.plan.yearly_price} onChange={setPlatformForm('plan')} />
             <Field label="Maximum Users" type="number" name="maximum_users" value={forms.plan.maximum_users} onChange={setPlatformForm('plan')} />
@@ -4722,9 +5027,7 @@ function PlatformAdminView({
               {catalogBillingIntervals.map((interval) => <option key={interval} value={interval}>{labelize(interval)}</option>)}
             </Select>
             <Field label="Amount" type="number" name="amount" value={forms.subscription.amount} onChange={setPlatformForm('subscription')} />
-            <Select label="Currency" name="currency" value={forms.subscription.currency} onChange={setPlatformForm('subscription')}>
-              {catalogCurrencies.map((currency) => <option key={currency} value={currency}>{currency}</option>)}
-            </Select>
+            <PickerField label="Currency" name="currency" value={forms.subscription.currency} options={currencyOptions} onChange={setPlatformForm('subscription')} searchPlaceholder="Search currencies" />
             <Field label="Seats" type="number" name="seats" value={forms.subscription.seats} onChange={setPlatformForm('subscription')} />
             <Field label="Renewal Date" type="date" name="renewal_at" value={forms.subscription.renewal_at} onChange={setPlatformForm('subscription')} />
             <div className="row-actions span-2">
@@ -5622,36 +5925,9 @@ function PlatformAdminView({
       {renderGlobalSearch()}
       {renderSearchResults()}
 
-      <section className="cloud-console-layout">
-        <aside className="cloud-console-sidebar">
-          {consoleLayers.map((layer) => {
-            const Icon = layerIconMap[layer.id] || BarChart3
-            return (
-              <button key={layer.id} type="button" className={activeLayer === layer.id ? 'active' : ''} onClick={() => activateLayer(layer)}>
-                <Icon size={17} />
-                <span>{layer.label}</span>
-              </button>
-            )
-          })}
-
-          <div className="cloud-context-nav">
-            <strong>{activeLayerConfig?.label}</strong>
-            {(activeLayerConfig?.items || []).map((item) => {
-              const Icon = tabIconMap[item.id] || BarChart3
-              return (
-                <button key={item.id} type="button" className={activeTab === item.id ? 'active' : ''} onClick={() => activateTab(item.id)}>
-                  <Icon size={15} />
-                  {item.label}
-                </button>
-              )
-            })}
-          </div>
-        </aside>
-
-        <main className="cloud-console-main">
-          {renderLayerContent()}
-        </main>
-      </section>
+      <main className="cloud-console-main">
+        {renderLayerContent()}
+      </main>
     </section>
   )
 }
@@ -5662,78 +5938,348 @@ function ActivityIcon(props) {
 
 function DashboardView({ dashboard, projects }) {
   const kpis = dashboard?.kpis || {}
-  const costData = dashboard?.cost_by_category || []
-  const healthData = (dashboard?.project_health || []).map((item) => ({
-    name: labelize(item.health_status),
-    value: Number(item.total),
-    key: item.health_status,
+  const portfolioCards = dashboard?.portfolio_cards?.length ? dashboard.portfolio_cards : projects.slice(0, 4)
+  const budget = dashboard?.budget_overview || {}
+  const cashFlowData = (dashboard?.cash_flow_trend || []).map((row) => ({
+    ...row,
+    inflow: toChartNumber(row.inflow),
+    outflow: toChartNumber(row.outflow),
   }))
+  const procurementStatuses = dashboard?.procurement_overview?.statuses || dashboard?.procurement_status?.purchase_orders || []
+  const procurementChartData = procurementStatuses.map((row) => ({
+    name: labelize(row.status),
+    value: toChartNumber(row.value ?? row.total),
+    key: row.status,
+  }))
+  const pendingApprovals = dashboard?.pending_approval_items || []
+  const inventoryAlerts = dashboard?.inventory_alerts || []
+  const workforce = dashboard?.workforce_attendance || {}
+  const invoiceSummary = dashboard?.invoice_summary || {}
+  const costBreakdown = dashboard?.cost_breakdown?.length
+    ? dashboard.cost_breakdown
+    : (dashboard?.cost_by_category || []).map((row) => ({
+      category: row.category,
+      budget: toChartNumber(row.budget),
+      committed: toChartNumber(row.committed),
+      actual: toChartNumber(row.actual),
+      percent: 0,
+    }))
+  const projectPerformance = dashboard?.project_performance?.length
+    ? dashboard.project_performance
+    : projects.slice(0, 12).map((project) => ({
+      id: project.id,
+      code: project.code,
+      project: project.name,
+      status: project.status,
+      health_status: project.health_status,
+      progress_percent: Number(project.progress_percent || 0),
+      budget: Number(project.budget_total || 0),
+      budget_utilized_percent: Number(project.budget_total || 0) > 0 ? Math.round((Number(project.actual_cost || 0) / Number(project.budget_total || 0)) * 100) : 0,
+      cost_to_date: Number(project.actual_cost || 0),
+      cost_variance: Number(project.budget_total || 0) - Number(project.actual_cost || 0),
+      schedule_variance_days: null,
+      spi: null,
+      cpi: null,
+    }))
+  const budgetChartData = [
+    { name: 'Actual Cost', value: toChartNumber(budget.actual), color: '#2364d8' },
+    { name: 'Committed', value: toChartNumber(budget.committed), color: '#188a5a' },
+    { name: 'Balance', value: toChartNumber(budget.balance), color: '#e9b949' },
+  ].filter((item) => item.value > 0)
+  const invoiceRows = [
+    ['Paid invoices', invoiceSummary.paid?.count || 0, money(invoiceSummary.paid?.amount), 'good'],
+    ['Outstanding invoices', invoiceSummary.outstanding?.count || 0, money(invoiceSummary.outstanding?.amount), 'warn'],
+    ['Overdue invoices', invoiceSummary.overdue?.count || 0, money(invoiceSummary.overdue?.amount), 'bad'],
+    ['Draft invoices', invoiceSummary.draft?.count || 0, money(invoiceSummary.draft?.amount), 'neutral'],
+  ]
+  const costTotal = costBreakdown.reduce((total, row) => total + toChartNumber(row.actual), 0)
 
   return (
-    <section className="view-stack">
-      <div className="kpi-grid">
-        <Kpi icon={FolderKanban} label="Active projects" value={kpis.active_projects || 0} sub={`${kpis.total_projects || 0} total`} />
-        <Kpi icon={WalletCards} label="Budget" value={money(kpis.budget_total)} sub={`${money(kpis.actual_cost)} actual`} />
-        <Kpi icon={Truck} label="Issued PO value" value={money(kpis.issued_po_value)} sub={`${kpis.pending_approvals || 0} approvals`} />
-        <Kpi icon={AlertTriangle} label="Late tasks" value={kpis.late_tasks || 0} sub={`${kpis.critical_projects || 0} critical projects`} />
+    <section className="view-stack erp-dashboard">
+      <section className="panel erp-portfolio-panel">
+        <PanelTitle icon={FolderKanban} title="Project Portfolio" />
+        <div className="erp-project-card-grid">
+          {portfolioCards.length ? portfolioCards.map((project) => (
+            <DashboardProjectCard key={project.id || project.code || project.name} project={project} />
+          )) : (
+            <div className="erp-empty-card">No active project portfolio records yet.</div>
+          )}
+        </div>
+      </section>
+
+      <div className="kpi-grid erp-kpi-grid">
+        <Kpi icon={WalletCards} label="Total revenue" value={money(kpis.total_revenue)} sub={`${money(kpis.contract_value)} contract value`} />
+        <Kpi icon={Calculator} label="Total cost" value={money(kpis.total_cost ?? kpis.actual_cost)} sub={`${money(kpis.budget_total)} budget`} />
+        <Kpi icon={BarChart3} label="Gross profit" value={money(kpis.gross_profit)} sub={`${kpis.average_progress || 0}% portfolio progress`} />
+        <Kpi icon={AlertTriangle} label="Cost variance" value={money(kpis.cost_variance ?? kpis.variance)} sub={`${kpis.late_tasks || 0} late tasks`} />
+        <Kpi icon={FolderKanban} label="Active projects" value={kpis.active_projects || 0} sub={`${kpis.total_projects || 0} total projects`} />
+        <Kpi icon={Clock3} label="Days to finish" value={kpis.average_days_to_finish || 0} sub="Average remaining days" />
       </div>
 
-      <div className="grid-main">
-        <section className="panel chart-panel">
-          <PanelTitle icon={BarChart3} title="Cost By Category" />
-          <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={costData}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="category" tickFormatter={labelize} />
-              <YAxis tickFormatter={(value) => compactFormatter.format(value)} />
-              <Tooltip formatter={(value) => money(value)} labelFormatter={labelize} />
-              <Bar dataKey="budget" fill="#2c6d8f" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="committed" fill="#c47a16" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="actual" fill="#188a5a" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+      <div className="erp-dashboard-grid">
+        <section className="panel erp-budget-panel">
+          <PanelTitle icon={WalletCards} title="Budget Overview" />
+          <div className="erp-donut-layout">
+            <div className="erp-donut">
+              {budgetChartData.length ? (
+                <>
+                  <ResponsiveContainer width="100%" height={230}>
+                    <PieChart>
+                      <Pie data={budgetChartData} dataKey="value" nameKey="name" innerRadius={62} outerRadius={92} paddingAngle={3}>
+                        {budgetChartData.map((entry) => (
+                          <Cell key={entry.name} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(value) => money(value)} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="erp-donut-center">
+                    <strong>{budget.utilized_percent || 0}%</strong>
+                    <span>Utilized</span>
+                  </div>
+                </>
+              ) : (
+                <div className="erp-budget-empty-state">
+                  <strong>{budget.utilized_percent || 0}%</strong>
+                  <span>Budget utilized</span>
+                  <DashboardProgress value={budget.utilized_percent || 0} />
+                </div>
+              )}
+            </div>
+            <div className="erp-summary-list">
+              <DashboardMetricRow label="Budget" value={money(budget.budget)} tone="blue" />
+              <DashboardMetricRow label="Committed" value={money(budget.committed)} tone="green" />
+              <DashboardMetricRow label="Actual cost" value={money(budget.actual)} tone="amber" />
+              <DashboardMetricRow label="Balance" value={money(budget.balance)} tone="neutral" />
+            </div>
+          </div>
         </section>
 
-        <section className="panel chart-panel">
-          <PanelTitle icon={ShieldCheck} title="Project Health" />
-          <ResponsiveContainer width="100%" height={280}>
-            <PieChart>
-              <Pie data={healthData} dataKey="value" nameKey="name" innerRadius={62} outerRadius={102} paddingAngle={3}>
-                {healthData.map((entry) => (
-                  <Cell key={entry.key} fill={healthColors[entry.key] || '#6b7280'} />
-                ))}
-              </Pie>
-              <Tooltip />
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="legend-row">
-            {healthData.map((item) => (
-              <span key={item.key}>
-                <i style={{ background: healthColors[item.key] || '#6b7280' }} />
-                {item.name}
-              </span>
+        <section className="panel chart-panel erp-wide-panel">
+          <PanelTitle icon={BarChart3} title="Cash Flow Trend" />
+          {cashFlowData.some((row) => row.inflow > 0 || row.outflow > 0) ? (
+            <ResponsiveContainer width="100%" height={282}>
+              <LineChart data={cashFlowData} margin={{ top: 10, right: 16, left: 0, bottom: 14 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                <YAxis tickFormatter={(value) => compactFormatter.format(value)} tick={{ fontSize: 11 }} />
+                <Tooltip formatter={(value, name) => [money(value), labelize(name)]} />
+                <Legend formatter={labelize} wrapperStyle={{ fontSize: 12 }} />
+                <Line type="monotone" dataKey="inflow" stroke="#188a5a" strokeWidth={3} dot={{ r: 3 }} />
+                <Line type="monotone" dataKey="outflow" stroke="#2364d8" strokeWidth={3} dot={{ r: 3 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <EmptyChart />
+          )}
+        </section>
+
+        <section className="panel">
+          <PanelTitle icon={Truck} title="Procurement Status" />
+          <div className="erp-donut compact">
+            {procurementChartData.some((item) => item.value > 0) ? (
+              <>
+                <ResponsiveContainer width="100%" height={230}>
+                  <PieChart>
+                    <Pie data={procurementChartData} dataKey="value" nameKey="name" innerRadius={58} outerRadius={90} paddingAngle={3}>
+                      {procurementChartData.map((entry, index) => (
+                        <Cell key={entry.key || entry.name} fill={intelligenceChartColors[index % intelligenceChartColors.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value, name) => [money(value), labelize(name)]} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="erp-donut-center">
+                  <strong>{money(dashboard?.procurement_overview?.total_po_value)}</strong>
+                  <span>Total PO value</span>
+                </div>
+              </>
+            ) : (
+              <EmptyChart />
+            )}
+          </div>
+          <div className="erp-summary-list">
+            {procurementStatuses.map((row) => (
+              <DashboardMetricRow key={row.status} label={labelize(row.status)} value={money(row.value || 0)} sub={`${row.total || 0} orders`} tone="blue" />
             ))}
           </div>
         </section>
       </div>
 
+      <div className="erp-dashboard-grid three">
+        <section className="panel">
+          <PanelTitle icon={CheckCircle2} title="Pending Approvals" />
+          <div className="erp-signal-list">
+            {pendingApprovals.length ? pendingApprovals.map((item, index) => (
+              <article key={`${item.type}-${item.title}-${index}`}>
+                <span className={`erp-signal-icon ${statusColor[item.severity] || 'neutral'}`}>
+                  <CheckCircle2 size={15} />
+                </span>
+                <div>
+                  <strong>{item.title}</strong>
+                  <small>{item.type}{item.project ? ` | ${item.project}` : ''}</small>
+                </div>
+                <div className="erp-signal-meta">
+                  <strong>{item.amount ? money(item.amount) : shortDate(item.due_date)}</strong>
+                  <Badge value={item.severity || item.priority} />
+                </div>
+              </article>
+            )) : (
+              <div className="empty-cell">No pending approvals</div>
+            )}
+          </div>
+        </section>
+
+        <section className="panel">
+          <PanelTitle icon={Package} title="Inventory Alerts" />
+          <div className="erp-signal-list">
+            {inventoryAlerts.length ? inventoryAlerts.map((item) => (
+              <article key={item.sku || item.name}>
+                <span className="erp-signal-icon warn">
+                  <AlertTriangle size={15} />
+                </span>
+                <div>
+                  <strong>{item.name}</strong>
+                  <small>{labelize(item.category)} | {item.sku}</small>
+                </div>
+                <div className="erp-signal-meta">
+                  <strong>{compactFormatter.format(toChartNumber(item.quantity_on_hand))} {item.unit}</strong>
+                  <small>Min. {compactFormatter.format(toChartNumber(item.reorder_level))}</small>
+                </div>
+              </article>
+            )) : (
+              <div className="empty-cell">No inventory alerts</div>
+            )}
+          </div>
+        </section>
+
+        <section className="panel">
+          <PanelTitle icon={Users} title="Workforce Attendance" />
+          <div className="erp-attendance-card">
+            <div>
+              <strong>{workforce.attendance_rate || 0}%</strong>
+              <span>Present today</span>
+            </div>
+            <DashboardProgress value={workforce.attendance_rate || 0} tone="green" />
+          </div>
+          <div className="erp-summary-list">
+            <DashboardMetricRow label="Total workers" value={workforce.total_workers || 0} tone="blue" />
+            <DashboardMetricRow label="Present" value={workforce.present_today || 0} tone="green" />
+            <DashboardMetricRow label="Absent" value={workforce.absent_today || 0} tone="red" />
+            <DashboardMetricRow label="On leave" value={workforce.on_leave || 0} tone="amber" />
+          </div>
+        </section>
+      </div>
+
+      <div className="grid-main">
+        <section className="panel">
+          <PanelTitle icon={WalletCards} title="Invoice Summary" />
+          <div className="erp-summary-list invoice">
+            {invoiceRows.map(([label, count, amount, tone]) => (
+              <DashboardMetricRow key={label} label={label} value={amount} sub={`${count} records`} tone={tone} />
+            ))}
+            <DashboardMetricRow label="Total invoiced" value={money(invoiceSummary.total_invoiced)} tone="blue" />
+          </div>
+        </section>
+
+        <section className="panel">
+          <PanelTitle icon={Calculator} title="Cost Breakdown" />
+          <div className="erp-cost-bars">
+            {costBreakdown.length ? costBreakdown.map((row, index) => {
+              const percent = row.percent || (costTotal > 0 ? Math.round((toChartNumber(row.actual) / costTotal) * 100) : 0)
+              return (
+                <article key={row.category || index}>
+                  <div>
+                    <strong>{labelize(row.category || 'Uncategorized')}</strong>
+                    <span>{money(row.actual)} | {percent}%</span>
+                  </div>
+                  <DashboardProgress value={percent} tone={index % 2 ? 'green' : 'blue'} />
+                </article>
+              )
+            }) : (
+              <div className="empty-cell">No cost breakdown yet</div>
+            )}
+          </div>
+        </section>
+      </div>
+
       <section className="panel">
-        <PanelTitle icon={CalendarDays} title="Portfolio" />
+        <PanelTitle icon={BarChart3} title="Project Performance" />
         <DataTable
-          columns={['Code', 'Project', 'Status', 'Health', 'Progress', 'Budget', 'Actual']}
-          rows={projects.map((project) => [
-            project.code,
-            project.name,
+          columns={['Project', 'Progress', 'Budget', 'Budget utilized', 'Cost to date', 'Cost variance', 'Schedule', 'SPI', 'CPI', 'Status']}
+          rows={projectPerformance.map((project) => [
+            project.project || project.name,
+            <div key="progress" className="erp-table-progress">
+              <span>{Math.round(toChartNumber(project.progress_percent))}%</span>
+              <DashboardProgress value={project.progress_percent || 0} />
+            </div>,
+            money(project.budget),
+            `${project.budget_utilized_percent || 0}%`,
+            money(project.cost_to_date),
+            money(project.cost_variance),
+            formatScheduleVariance(project.schedule_variance_days),
+            project.spi ?? 'N/A',
+            project.cpi ?? 'N/A',
             <Badge key="status" value={project.status} />,
-            <Badge key="health" value={project.health_status} />,
-            `${project.progress_percent}%`,
-            money(project.budget_total),
-            money(project.actual_cost),
           ])}
         />
       </section>
     </section>
   )
+}
+
+function DashboardProjectCard({ project }) {
+  const progress = Math.round(toChartNumber(project.progress_percent))
+
+  return (
+    <article className="erp-project-card">
+      <div className="erp-project-mark">
+        <span>{initials(project.name || project.project || project.code || 'Project')}</span>
+      </div>
+      <div className="erp-project-card-body">
+        <div>
+          <strong>{project.name || project.project}</strong>
+          <small>{project.client || project.country || 'No client assigned'}</small>
+        </div>
+        <Badge value={project.status} />
+        <DashboardProgress value={progress} />
+        <div className="erp-project-card-meta">
+          <span>{money(project.contract_value || project.budget_total)}</span>
+          <span>{progress}%</span>
+        </div>
+      </div>
+    </article>
+  )
+}
+
+function DashboardMetricRow({ label, value, sub, tone = 'neutral' }) {
+  return (
+    <div className={`erp-metric-row ${tone}`}>
+      <span>{label}</span>
+      <strong>{value}</strong>
+      {sub && <small>{sub}</small>}
+    </div>
+  )
+}
+
+function DashboardProgress({ value, tone = 'blue' }) {
+  const width = Math.max(0, Math.min(100, toChartNumber(value)))
+
+  return (
+    <div className={`erp-progress ${tone}`}>
+      <span style={{ width: `${width}%` }} />
+    </div>
+  )
+}
+
+function formatScheduleVariance(value) {
+  if (value === null || value === undefined) return 'N/A'
+
+  const days = Number(value)
+  if (!Number.isFinite(days)) return 'N/A'
+  if (days === 0) return 'Today'
+
+  return `${days > 0 ? '+' : ''}${days} days`
 }
 
 function CrmView({ branches, sales, leadForm, setLeadForm, createLead, runAction }) {
@@ -7185,6 +7731,8 @@ function EstimatingView({ sales, estimateForm, setEstimateForm, createEstimate, 
 
 function ProjectsView({
   branches,
+  clients = emptyList,
+  users = emptyList,
   projects,
   selectedProject,
   selectedProjectId,
@@ -7202,47 +7750,138 @@ function ProjectsView({
   runAction,
 }) {
   const canAdminister = canAdministerRecords(currentUser)
+  const [activeProjectSection, setActiveProjectSection] = useState('portfolio')
+  const [activeWorkspaceTab, setActiveWorkspaceTab] = useState('overview')
+  const [portfolioFilters, setPortfolioFilters] = useState({
+    q: '',
+    branch_id: '',
+    client_id: '',
+    project_manager: '',
+    project_type: '',
+    status: '',
+    health_status: '',
+    region: '',
+    start_from: '',
+    end_to: '',
+    min_value: '',
+    max_value: '',
+  })
   const [editingTaskId, setEditingTaskId] = useState(null)
   const [editingBudgetLineId, setEditingBudgetLineId] = useState(null)
-  const [projectAdminForm, setProjectAdminForm] = useState({
-    name: '',
-    status: 'planning',
-    health_status: 'on_track',
-    risk_level: 'medium',
-    contract_value: 0,
-    progress_percent: 0,
-    start_date: '',
-    target_end_date: '',
-    site_address: '',
-  })
+  const [projectAdminForm, setProjectAdminForm] = useState(emptyProjectForm)
+
+  const countryOptions = useMemo(
+    () => Object.entries(africanCountryNames).map(([value, label]) => ({ value, label, meta: value })).sort((a, b) => a.label.localeCompare(b.label)),
+    [],
+  )
+  const currencyOptions = useMemo(
+    () => Object.entries(africanCurrencyNames).map(([value, label]) => ({ value, label, meta: value })).sort((a, b) => a.label.localeCompare(b.label)),
+    [],
+  )
+  const projectStatusOptions = ['planning', 'active', 'on_hold', 'practical_completion', 'defects_liability', 'final_completion', 'completed', 'closed', 'cancelled']
+  const healthOptions = ['on_track', 'at_risk', 'critical']
+  const riskOptions = ['low', 'medium', 'high', 'critical']
+  const priorityOptions = ['low', 'normal', 'high', 'urgent']
+  const projectTypeOptions = uniqueValues(projects.map((project) => projectMeta(project).project_type)).filter(Boolean)
+  const regionOptions = uniqueValues(projects.map((project) => projectMeta(project).region)).filter(Boolean)
+  const managerOptions = uniqueValues([
+    ...projects.map((project) => projectMeta(project).project_manager),
+    ...users.map((user) => user.name),
+  ]).filter(Boolean)
+  const filteredProjects = useMemo(
+    () => projects.filter((project) => projectMatchesFilters(project, portfolioFilters)),
+    [portfolioFilters, projects],
+  )
+  const selectedMeta = projectMeta(selectedProject)
+  const selectedTasks = selectedProject?.tasks || emptyList
+  const selectedBudgetLines = selectedProject?.budget_lines || emptyList
+  const selectedRequisitions = selectedProject?.purchase_requisitions || emptyList
+  const selectedOrders = selectedProject?.purchase_orders || emptyList
+  const selectedRfqs = selectedProject?.procurement_rfqs || emptyList
+  const selectedReceipts = selectedProject?.goods_receipts || emptyList
+  const selectedSupplierInvoices = selectedProject?.supplier_invoices || emptyList
+  const selectedSupplierContracts = selectedProject?.supplier_contracts || emptyList
+  const selectedDailyReports = selectedProject?.field_daily_reports || emptyList
+  const selectedSiteIssues = selectedProject?.field_issues || emptyList
+  const selectedInspections = selectedProject?.inspections || emptyList
+  const selectedNcrs = selectedProject?.non_conformance_reports || emptyList
+  const selectedIncidents = selectedProject?.safety_incidents || emptyList
+  const selectedObservations = selectedProject?.safety_observations || emptyList
+  const selectedToolboxTalks = selectedProject?.toolbox_talks || emptyList
+  const selectedPermits = selectedProject?.work_permits || emptyList
+  const selectedApprovals = selectedProject?.client_approvals || emptyList
+  const selectedSubmittals = selectedProject?.consultant_submittals || emptyList
+  const selectedPortalItems = selectedProject?.portal_work_items || emptyList
+  const selectedDocuments = selectedProject?.documents || emptyList
+  const selectedDrawings = selectedProject?.drawings || emptyList
+  const selectedInvoices = selectedProject?.invoices || emptyList
+  const selectedExpenses = selectedProject?.expenses || emptyList
+  const selectedEquipmentAssignments = selectedProject?.equipment_assignments || emptyList
+  const selectedEquipmentAssets = selectedProject?.equipment_assets || emptyList
+  const selectedFuelLogs = selectedProject?.fuel_logs || emptyList
+  const selectedAllocations = selectedProject?.workforce_allocations || emptyList
+  const selectedAttendance = selectedProject?.attendance_records || emptyList
+  const selectedTimesheets = selectedProject?.workforce_timesheets || emptyList
+  const rfiItems = selectedPortalItems.filter((item) => String(item.item_type || '').toLowerCase().includes('rfi'))
+  const submittalItems = [
+    ...selectedSubmittals,
+    ...selectedPortalItems.filter((item) => String(item.item_type || '').toLowerCase().includes('submittal')),
+  ]
+  const projectActivity = selectedProject ? buildProjectActivity(selectedProject) : []
+  const projectSections = [
+    ['portfolio', 'Portfolio Dashboard', FolderKanban],
+    ['register', 'Project Register', ClipboardList],
+    ['new', 'New Project', Plus],
+    ['templates', 'Project Templates', Layers3],
+    ['archived', 'Archived Projects', Archive],
+    ['reports', 'Reports', BarChart3],
+  ]
+  const workspaceTabs = [
+    ['overview', 'Overview', BarChart3],
+    ['schedule', 'Schedule', CalendarDays],
+    ['budget', 'Budget & Cost', WalletCards],
+    ['commercial', 'Commercial', Calculator],
+    ['procurement', 'Procurement', Truck],
+    ['site', 'Site', MapPinned],
+    ['workforce', 'Workforce', Users],
+    ['equipment', 'Equipment', Truck],
+    ['quality_hse', 'Quality & HSE', ShieldCheck],
+    ['rfis', 'RFIs', ClipboardList],
+    ['submittals', 'Submittals', Upload],
+    ['meetings', 'Meetings', Users],
+    ['risks_issues', 'Risks & Issues', AlertTriangle],
+    ['documents', 'Documents', FileText],
+    ['finance', 'Finance', WalletCards],
+    ['client', 'Client', Handshake],
+    ['activity', 'Activity', Clock3],
+    ['closeout', 'Closeout', CheckCircle2],
+    ['settings', 'Settings', Settings],
+  ]
 
   useEffect(() => {
     if (!selectedProject) return
 
-    setProjectAdminForm({
-      name: selectedProject.name || '',
-      status: selectedProject.status || 'planning',
-      health_status: selectedProject.health_status || 'on_track',
-      risk_level: selectedProject.risk_level || 'medium',
-      contract_value: selectedProject.contract_value || 0,
-      progress_percent: selectedProject.progress_percent || 0,
-      start_date: dateInputValue(selectedProject.start_date),
-      target_end_date: dateInputValue(selectedProject.target_end_date),
-      site_address: selectedProject.site_address || '',
-    })
+    setProjectAdminForm(projectFormFromProject(selectedProject))
   }, [selectedProject])
 
   function saveProjectAdministration(event) {
     event.preventDefault()
     if (!selectedProject) return
+    const projectNumericFields = ['contract_value', 'approved_variations', 'revised_contract_value', 'retention_percent', 'advance_payment']
+    const payload = {
+      ...projectAdminForm,
+      client_id: projectAdminForm.client_id ? Number(projectAdminForm.client_id) : null,
+      progress_percent: Number(projectAdminForm.progress_percent || 0),
+    }
+
+    projectNumericFields.forEach((field) => {
+      payload[field] = projectAdminForm[field] === '' || projectAdminForm[field] === null || projectAdminForm[field] === undefined
+        ? null
+        : Number(projectAdminForm[field])
+    })
 
     runAction(
-      () =>
-        api.updateProject(selectedProject.id, {
-          ...projectAdminForm,
-          contract_value: Number(projectAdminForm.contract_value || 0),
-          progress_percent: Number(projectAdminForm.progress_percent || 0),
-        }),
+      () => api.updateProject(selectedProject.id, payload),
       'Project updated.',
       { refreshProjectOnly: true },
     )
@@ -7361,216 +8000,913 @@ function ProjectsView({
     })
   }
 
-  return (
-    <section className="view-stack">
-      <div className="split-layout">
+  function setPortfolioFilter(event) {
+    const { name, value } = event.target
+    setPortfolioFilters((current) => ({ ...current, [name]: value }))
+  }
+
+  function clearPortfolioFilters() {
+    setPortfolioFilters({
+      q: '',
+      branch_id: '',
+      client_id: '',
+      project_manager: '',
+      project_type: '',
+      status: '',
+      health_status: '',
+      region: '',
+      start_from: '',
+      end_to: '',
+      min_value: '',
+      max_value: '',
+    })
+  }
+
+  function openProjectWorkspace(project) {
+    setSelectedProjectId(project.id)
+    setActiveProjectSection('workspace')
+    setActiveWorkspaceTab('overview')
+  }
+
+  function projectFormFromProject(project) {
+    const meta = projectMeta(project)
+
+    return {
+      ...emptyProjectForm,
+      branch_id: project.branch_id || project.branch?.id || '',
+      client_id: project.client_id || project.client?.id || '',
+      client_name: project.client?.name || '',
+      code: project.code || '',
+      name: project.name || '',
+      description: project.description || '',
+      status: project.status || 'planning',
+      health_status: project.health_status || 'on_track',
+      risk_level: project.risk_level || 'medium',
+      contract_value: project.contract_value || '',
+      currency: project.currency || 'GHS',
+      progress_percent: project.progress_percent || 0,
+      start_date: dateInputValue(project.start_date),
+      target_end_date: dateInputValue(project.target_end_date),
+      country: project.country || 'GH',
+      site_address: project.site_address || '',
+      ...Object.fromEntries(Object.entries(meta).map(([key, value]) => [key, value ?? ''])),
+    }
+  }
+
+  function renderPortfolioDashboard() {
+    const activeProjects = projects.filter((project) => project.status === 'active')
+    const atRiskProjects = projects.filter((project) => ['at_risk', 'critical'].includes(project.health_status) || ['high', 'critical'].includes(project.risk_level))
+    const behindSchedule = projects.filter((project) => projectScheduleVarianceDays(project) < 0)
+    const overBudget = projects.filter((project) => projectOverBudget(project))
+    const contractValue = sumBy(projects, 'contract_value')
+    const forecastRevenue = projects.reduce((total, project) => total + Number(projectMeta(project).revised_contract_value || project.contract_value || 0), 0)
+    const openNcrs = projects.reduce((total, project) => total + Number(project.non_conformance_reports_count || 0), 0)
+    const openRfis = projects.reduce((total, project) => total + Number(project.portal_work_items_count || 0), 0)
+    const pendingApprovals = projects.reduce((total, project) => total + Number(project.client_approvals_count || 0) + Number(project.consultant_submittals_count || 0), 0)
+    const outstandingReceivables = sumBy(selectedInvoices.filter((invoice) => ['sent', 'overdue', 'part_paid'].includes(invoice.payment_status || invoice.status)), 'balance_due')
+
+    return (
+      <section className="view-stack projects-portfolio">
+        <div className="kpi-grid projects-kpis">
+          <Kpi icon={FolderKanban} label="Active Projects" value={activeProjects.length} sub={`${projects.length} total in portfolio`} />
+          <Kpi icon={AlertTriangle} label="Projects at Risk" value={atRiskProjects.length} sub={`${projects.filter((project) => project.health_status === 'critical').length} critical`} />
+          <Kpi icon={Clock3} label="Behind Schedule" value={behindSchedule.length} sub="Past target date and not closed" />
+          <Kpi icon={WalletCards} label="Over Budget" value={overBudget.length} sub="Actual or forecast above budget" />
+          <Kpi icon={WalletCards} label="Contract Value" value={money(contractValue)} sub="Approved project contract value" />
+          <Kpi icon={BarChart3} label="Forecast Revenue" value={money(forecastRevenue)} sub="Contract plus approved variations where set" />
+          <Kpi icon={WalletCards} label="Outstanding Receivables" value={money(outstandingReceivables)} sub="Loaded from open project invoices" />
+          <Kpi icon={ShieldCheck} label="Open NCRs" value={openNcrs} sub="Quality items across loaded register" />
+          <Kpi icon={ClipboardList} label="Open RFIs" value={openRfis} sub="Portal work items marked as RFIs" />
+          <Kpi icon={CheckCircle2} label="Pending Approvals" value={pendingApprovals} sub="Client approvals and submittals" />
+        </div>
+
+        {renderProjectFilters()}
+        {renderProjectRegister(filteredProjects)}
+      </section>
+    )
+  }
+
+  function renderProjectFilters() {
+    return (
+      <section className="panel project-filter-panel">
+        <PanelTitle icon={Eye} title="Portfolio Filters" />
+        <div className="form-grid project-filter-grid">
+          <Field label="Search" name="q" value={portfolioFilters.q} onChange={setPortfolioFilter} placeholder="Project, client, code, manager, region" />
+          <Select label="Branch" name="branch_id" value={portfolioFilters.branch_id} onChange={setPortfolioFilter}>
+            <option value="">All branches</option>
+            {branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}
+          </Select>
+          <Select label="Client" name="client_id" value={portfolioFilters.client_id} onChange={setPortfolioFilter}>
+            <option value="">All clients</option>
+            {clients.map((client) => <option key={client.id} value={client.id}>{client.name}</option>)}
+          </Select>
+          <Select label="Project manager" name="project_manager" value={portfolioFilters.project_manager} onChange={setPortfolioFilter}>
+            <option value="">All managers</option>
+            {managerOptions.map((manager) => <option key={manager} value={manager}>{manager}</option>)}
+          </Select>
+          <Select label="Project type" name="project_type" value={portfolioFilters.project_type} onChange={setPortfolioFilter}>
+            <option value="">All types</option>
+            {projectTypeOptions.map((type) => <option key={type} value={type}>{type}</option>)}
+          </Select>
+          <Select label="Status" name="status" value={portfolioFilters.status} onChange={setPortfolioFilter}>
+            <option value="">All statuses</option>
+            {projectStatusOptions.map((status) => <option key={status} value={status}>{labelize(status)}</option>)}
+          </Select>
+          <Select label="Health" name="health_status" value={portfolioFilters.health_status} onChange={setPortfolioFilter}>
+            <option value="">All health</option>
+            {healthOptions.map((health) => <option key={health} value={health}>{labelize(health)}</option>)}
+          </Select>
+          <Select label="Region" name="region" value={portfolioFilters.region} onChange={setPortfolioFilter}>
+            <option value="">All regions</option>
+            {regionOptions.map((region) => <option key={region} value={region}>{region}</option>)}
+          </Select>
+          <Field label="Start from" type="date" name="start_from" value={portfolioFilters.start_from} onChange={setPortfolioFilter} />
+          <Field label="Target before" type="date" name="end_to" value={portfolioFilters.end_to} onChange={setPortfolioFilter} />
+          <Field label="Min value" type="number" name="min_value" value={portfolioFilters.min_value} onChange={setPortfolioFilter} />
+          <Field label="Max value" type="number" name="max_value" value={portfolioFilters.max_value} onChange={setPortfolioFilter} />
+          <button type="button" className="table-action project-filter-clear" onClick={clearPortfolioFilters}>Clear filters</button>
+        </div>
+      </section>
+    )
+  }
+
+  function renderProjectRegister(rows = filteredProjects) {
+    return (
+      <section className="panel">
+        <PanelTitle icon={FolderKanban} title="Project Register" />
+        <DataTable
+          columns={['Project', 'Client', 'Manager', 'Progress', 'Contract Value', 'Budget', 'Schedule', 'Health', 'Status', 'Action']}
+          rows={rows.map((project) => [
+            <div key="project" className="project-register-name"><strong>{project.name}</strong><small>{project.code}</small></div>,
+            projectClientName(project),
+            projectMeta(project).project_manager || '',
+            <div key="progress" className="erp-table-progress"><span>{project.progress_percent || 0}%</span><DashboardProgress value={project.progress_percent || 0} /></div>,
+            money(project.contract_value),
+            money(project.budget_total),
+            projectScheduleLabel(project),
+            <Badge key="health" value={project.health_status} />,
+            <Badge key="status" value={project.status} />,
+            <button key="open" type="button" className="table-action" onClick={() => openProjectWorkspace(project)}>Open</button>,
+          ])}
+        />
+      </section>
+    )
+  }
+
+  function renderNewProject() {
+    const formHandler = setForm(setProjectForm)
+
+    return (
+      <form className="project-create-form" onSubmit={createProject} autoComplete="off">
         <section className="panel">
-          <PanelTitle icon={FolderKanban} title="Project Register" />
-          <div className="record-list">
-            {projects.map((project) => (
-              <button
-                type="button"
-                key={project.id}
-                className={selectedProjectId === project.id ? 'record active' : 'record'}
-                onClick={() => setSelectedProjectId(project.id)}
-              >
-                <strong>{project.name}</strong>
-                <span>{project.code}</span>
-                <Badge value={project.health_status} />
-              </button>
-            ))}
+          <PanelTitle icon={FolderKanban} title="Basic Information" />
+          <div className="form-grid project-create-grid">
+            <Field label="Project Number" name="code" value={projectForm.code} onChange={formHandler} placeholder="Auto-generated unless entered" />
+            <Field label="Project Name" name="name" value={projectForm.name} onChange={formHandler} required />
+            <Select label="Client" name="client_id" value={projectForm.client_id} onChange={formHandler}>
+              <option value="">Type client name instead</option>
+              {clients.map((client) => <option key={client.id} value={client.id}>{client.name}</option>)}
+            </Select>
+            <Field label="Client Name" name="client_name" value={projectForm.client_name} onChange={formHandler} placeholder="Creates client if not selected" />
+            <Select label="Branch" name="branch_id" value={projectForm.branch_id} onChange={formHandler} required>
+              {branches.map((branch) => <option value={branch.id} key={branch.id}>{branch.name}</option>)}
+            </Select>
+            <Field label="Project Type" name="project_type" value={projectForm.project_type} onChange={formHandler} placeholder="Residential, commercial, infrastructure" />
+            <Field label="Sector" name="sector" value={projectForm.sector} onChange={formHandler} />
+            <Field label="Contract Type" name="contract_type" value={projectForm.contract_type} onChange={formHandler} />
+            <Select label="Project Status" name="status" value={projectForm.status} onChange={formHandler}>{projectStatusOptions.map((status) => <option key={status} value={status}>{labelize(status)}</option>)}</Select>
+            <Select label="Priority" name="priority" value={projectForm.priority} onChange={formHandler}>{priorityOptions.map((priority) => <option key={priority} value={priority}>{labelize(priority)}</option>)}</Select>
+            <TextArea className="span-2" label="Description" name="description" value={projectForm.description} onChange={formHandler} />
           </div>
         </section>
 
         <section className="panel">
-          <PanelTitle icon={Plus} title="New Project" />
-          <form className="form-grid two" onSubmit={createProject}>
-            <Select label="Branch" name="branch_id" value={projectForm.branch_id} onChange={setForm(setProjectForm)} required>
-              {branches.map((branch) => (
-                <option value={branch.id} key={branch.id}>
-                  {branch.name}
-                </option>
-              ))}
-            </Select>
-            <Field label="Client" name="client_name" value={projectForm.client_name} onChange={setForm(setProjectForm)} />
-            <Field label="Project name" name="name" value={projectForm.name} onChange={setForm(setProjectForm)} required />
-            <Field label="Contract value" type="number" name="contract_value" value={projectForm.contract_value} onChange={setForm(setProjectForm)} />
-            <Field label="Start" type="date" name="start_date" value={projectForm.start_date} onChange={setForm(setProjectForm)} />
-            <Field label="Target end" type="date" name="target_end_date" value={projectForm.target_end_date} onChange={setForm(setProjectForm)} />
-            <Field className="span-2" label="Site address" name="site_address" value={projectForm.site_address} onChange={setForm(setProjectForm)} />
-            <button type="submit" className="primary-action span-2">
-              <Plus size={17} />
-              Create project
+          <PanelTitle icon={MapPinned} title="Location" />
+          <div className="form-grid project-create-grid">
+            <PickerField label="Country" name="country" value={projectForm.country} options={countryOptions} onChange={formHandler} searchPlaceholder="Search countries" />
+            <Field label="Region" name="region" value={projectForm.region} onChange={formHandler} />
+            <Field label="City" name="city" value={projectForm.city} onChange={formHandler} />
+            <Field label="GPS Coordinates" name="gps_coordinates" value={projectForm.gps_coordinates} onChange={formHandler} placeholder="5.6037,-0.1870" />
+            <Field className="span-2" label="Site Address" name="site_address" value={projectForm.site_address} onChange={formHandler} />
+            <Field className="span-2" label="Site Map URL" name="site_map_url" value={projectForm.site_map_url} onChange={formHandler} />
+          </div>
+        </section>
+
+        <section className="panel">
+          <PanelTitle icon={CalendarDays} title="Dates" />
+          <div className="form-grid project-create-grid">
+            <Field label="Contract Start Date" type="date" name="start_date" value={projectForm.start_date} onChange={formHandler} />
+            <Field label="Planned Start Date" type="date" name="planned_start_date" value={projectForm.planned_start_date} onChange={formHandler} />
+            <Field label="Actual Start Date" type="date" name="actual_start_date" value={projectForm.actual_start_date} onChange={formHandler} />
+            <Field label="Target Completion Date" type="date" name="target_end_date" value={projectForm.target_end_date} onChange={formHandler} />
+            <Field label="Contract Completion Date" type="date" name="contract_completion_date" value={projectForm.contract_completion_date} onChange={formHandler} />
+            <Field label="Defects Liability End Date" type="date" name="defects_liability_end_date" value={projectForm.defects_liability_end_date} onChange={formHandler} />
+          </div>
+        </section>
+
+        <section className="panel">
+          <PanelTitle icon={WalletCards} title="Commercial Information" />
+          <div className="form-grid project-create-grid">
+            <Field label="Original Contract Value" type="number" name="contract_value" value={projectForm.contract_value} onChange={formHandler} />
+            <PickerField label="Currency" name="currency" value={projectForm.currency} options={currencyOptions} onChange={formHandler} searchPlaceholder="Search currencies" />
+            <Field label="Approved Variations" type="number" name="approved_variations" value={projectForm.approved_variations} onChange={formHandler} />
+            <Field label="Revised Contract Value" type="number" name="revised_contract_value" value={projectForm.revised_contract_value} onChange={formHandler} />
+            <Field label="Retention %" type="number" min="0" max="100" name="retention_percent" value={projectForm.retention_percent} onChange={formHandler} />
+            <Field label="Advance Payment" type="number" name="advance_payment" value={projectForm.advance_payment} onChange={formHandler} />
+            <TextArea label="Payment Terms" name="payment_terms" value={projectForm.payment_terms} onChange={formHandler} />
+            <TextArea label="Tax Configuration" name="tax_configuration" value={projectForm.tax_configuration} onChange={formHandler} />
+            <Field className="span-2" label="Funding Source" name="funding_source" value={projectForm.funding_source} onChange={formHandler} />
+          </div>
+        </section>
+
+        <section className="panel">
+          <PanelTitle icon={Users} title="Project Team" />
+          <div className="form-grid project-create-grid">
+            {[
+              ['project_director', 'Project Director'],
+              ['project_manager', 'Project Manager'],
+              ['site_manager', 'Site Manager'],
+              ['quantity_surveyor', 'Quantity Surveyor'],
+              ['project_engineer', 'Project Engineer'],
+              ['hse_manager', 'HSE Manager'],
+              ['qa_qc_manager', 'QA/QC Manager'],
+              ['planner', 'Planner'],
+              ['commercial_manager', 'Commercial Manager'],
+            ].map(([name, label]) => <Field key={name} label={label} name={name} value={projectForm[name]} onChange={formHandler} list="project-user-list" />)}
+            <datalist id="project-user-list">
+              {users.map((user) => <option key={user.id} value={user.name} />)}
+            </datalist>
+          </div>
+        </section>
+
+        <section className="panel">
+          <PanelTitle icon={Settings} title="Project Setup" />
+          <div className="form-grid project-create-grid">
+            <Field label="Cost Code Structure" name="cost_code_structure" value={projectForm.cost_code_structure} onChange={formHandler} />
+            <Field label="WBS Template" name="wbs_template" value={projectForm.wbs_template} onChange={formHandler} />
+            <Field label="Budget Template" name="budget_template" value={projectForm.budget_template} onChange={formHandler} />
+            <Field label="Approval Workflow" name="approval_workflow" value={projectForm.approval_workflow} onChange={formHandler} />
+            <Field label="Working Calendar" name="working_calendar" value={projectForm.working_calendar} onChange={formHandler} />
+            <Field label="Default Warehouse" name="default_warehouse" value={projectForm.default_warehouse} onChange={formHandler} />
+            <TextArea className="span-2" label="Default Document Folders" name="default_document_folders" value={projectForm.default_document_folders} onChange={formHandler} placeholder="01 Contract, 02 Drawings, 03 Specifications..." />
+          </div>
+        </section>
+
+        <section className="panel">
+          <PanelTitle icon={Handshake} title="Linked Source" />
+          <div className="form-grid project-create-grid">
+            <Field label="Linked CRM Opportunity" name="linked_crm_opportunity" value={projectForm.linked_crm_opportunity} onChange={formHandler} />
+            <Field label="Linked Tender" name="linked_tender" value={projectForm.linked_tender} onChange={formHandler} />
+            <Field label="Linked Estimate" name="linked_estimate" value={projectForm.linked_estimate} onChange={formHandler} />
+            <Field label="Linked Contract" name="linked_contract" value={projectForm.linked_contract} onChange={formHandler} />
+          </div>
+        </section>
+
+        <div className="row-actions project-create-actions">
+          <button type="submit" className="primary-action"><Plus size={17} />Create project</button>
+        </div>
+      </form>
+    )
+  }
+
+  function renderProjectWorkspace() {
+    if (!selectedProject) {
+      return <section className="panel"><PanelTitle icon={FolderKanban} title="No Project Selected" /></section>
+    }
+
+    const budget = Number(selectedProject.budget_total || 0)
+    const actual = Number(selectedProject.actual_cost || 0)
+    const committed = Number(selectedProject.committed_total || 0)
+    const forecastToComplete = Number(selectedProject.forecast_to_complete || 0)
+    const forecastFinalCost = actual + forecastToComplete
+    const revisedContract = Number(selectedMeta.revised_contract_value || selectedProject.contract_value || 0)
+    const grossMargin = revisedContract - forecastFinalCost
+
+    return (
+      <section className="project-workspace project-command-centre">
+        <header className="project-head enriched-project-head">
+          <div>
+            <p>{selectedProject.code} | {projectClientName(selectedProject)} | {selectedMeta.region || selectedProject.country}</p>
+            <h2>{selectedProject.name}</h2>
+            <small>{selectedMeta.project_type || 'Project'} | {selectedMeta.contract_type || 'Contract type not set'} | {selectedMeta.project_manager || 'No project manager set'}</small>
+          </div>
+          <div className="project-metrics">
+            <Metric label="Progress" value={`${selectedProject.progress_percent || 0}%`} />
+            <Metric label="Contract" value={money(selectedProject.contract_value)} />
+            <Metric label="Budget" value={money(budget)} />
+            <Metric label="Forecast Final Cost" value={money(forecastFinalCost)} />
+          </div>
+        </header>
+
+        <nav className="module-tabs project-workspace-tabs" aria-label="Project workspace">
+          {workspaceTabs.map(([key, label, Icon]) => (
+            <button key={key} type="button" className={activeWorkspaceTab === key ? 'active' : ''} onClick={() => setActiveWorkspaceTab(key)}>
+              <Icon size={15} />
+              {label}
             </button>
+          ))}
+        </nav>
+
+        {activeWorkspaceTab === 'overview' && (
+          <>
+            <div className="kpi-grid projects-kpis">
+              <Kpi icon={BarChart3} label="Overall Progress" value={`${selectedProject.progress_percent || 0}%`} sub={`Planned progress ${plannedProgress(selectedProject)}%`} />
+              <Kpi icon={Clock3} label="Schedule Variance" value={projectScheduleLabel(selectedProject)} sub={`Target ${shortDate(selectedProject.target_end_date) || 'not set'}`} />
+              <Kpi icon={WalletCards} label="Cost Performance" value={budget > 0 ? `${Math.round((actual / budget) * 100)}%` : 'N/A'} sub={`${money(actual)} actual cost`} />
+              <Kpi icon={WalletCards} label="Gross Margin" value={money(grossMargin)} sub={`${money(revisedContract)} revised contract`} />
+              <Kpi icon={WalletCards} label="Committed Cost" value={money(committed)} sub={`${money(budget - committed - actual)} remaining budget`} />
+              <Kpi icon={WalletCards} label="Cash Position" value={money(projectCashPosition(selectedProject))} sub="Paid client invoices less paid supplier costs" />
+              <Kpi icon={AlertTriangle} label="Open Risks" value={['high', 'critical'].includes(selectedProject.risk_level) ? 1 : 0} sub={`Risk level ${labelize(selectedProject.risk_level)}`} />
+              <Kpi icon={ShieldCheck} label="Open NCRs" value={selectedNcrs.filter((item) => !['closed', 'verified'].includes(item.status)).length} sub={`${selectedInspections.length} inspections`} />
+            </div>
+            <section className="panel">
+              <PanelTitle icon={ShieldCheck} title="Overall Project Health" />
+              <div className="project-health-grid">
+                {projectHealthRows(selectedProject).map((item) => (
+                  <article key={item.label}>
+                    <span>{item.label}</span>
+                    <strong>{item.value}</strong>
+                    <Badge value={item.tone} />
+                  </article>
+                ))}
+              </div>
+            </section>
+            <div className="grid-main">
+              <section className="panel">
+                <PanelTitle icon={ClipboardList} title="Command Centre" />
+                <DataTable columns={['Signal', 'Value', 'Action']} rows={[
+                  ['Outstanding client decisions', selectedApprovals.filter((item) => ['submitted', 'pending', 'in_review'].includes(item.status)).length, 'Review client approval queue.'],
+                  ['Open site issues', selectedSiteIssues.filter((item) => !['resolved', 'closed'].includes(item.status)).length, 'Assign owners from Site Management.'],
+                  ['Late activities', selectedTasks.filter((task) => taskIsLate(task)).length, 'Update look-ahead or recovery plan.'],
+                  ['Long-lead purchase orders', selectedOrders.filter((order) => daysUntil(order.expected_delivery_date) > 45).length, 'Track procurement expediting.'],
+                  ['Open safety items', selectedIncidents.filter((item) => !['closed'].includes(item.status)).length + selectedObservations.filter((item) => !['closed'].includes(item.status)).length, 'Review HSE corrective actions.'],
+                ]} />
+              </section>
+              <section className="panel">
+                <PanelTitle icon={Clock3} title="Latest Activity" />
+                <div className="project-activity-list compact">
+                  {projectActivity.slice(0, 8).map((item) => <ProjectActivityItem key={`${item.title}-${item.at}-${item.detail}`} item={item} />)}
+                  {!projectActivity.length && <div className="empty-cell">No project activity yet.</div>}
+                </div>
+              </section>
+            </div>
+          </>
+        )}
+
+        {activeWorkspaceTab === 'schedule' && renderScheduleTab()}
+        {activeWorkspaceTab === 'budget' && renderBudgetTab()}
+        {activeWorkspaceTab === 'commercial' && renderCommercialTab()}
+        {activeWorkspaceTab === 'procurement' && renderProcurementTab()}
+        {activeWorkspaceTab === 'site' && renderSiteTab()}
+        {activeWorkspaceTab === 'workforce' && renderWorkforceTab()}
+        {activeWorkspaceTab === 'equipment' && renderEquipmentTab()}
+        {activeWorkspaceTab === 'quality_hse' && renderQualityHseTab()}
+        {activeWorkspaceTab === 'rfis' && renderRfiTab()}
+        {activeWorkspaceTab === 'submittals' && renderSubmittalTab()}
+        {activeWorkspaceTab === 'meetings' && <section className="panel"><PanelTitle icon={Users} title="Meetings" /><div className="empty-cell">No meeting records have been created for this project yet.</div></section>}
+        {activeWorkspaceTab === 'risks_issues' && renderRisksIssuesTab()}
+        {activeWorkspaceTab === 'documents' && renderDocumentsTab()}
+        {activeWorkspaceTab === 'finance' && renderFinanceTab()}
+        {activeWorkspaceTab === 'client' && renderClientTab()}
+        {activeWorkspaceTab === 'activity' && renderActivityTab()}
+        {activeWorkspaceTab === 'closeout' && renderCloseoutTab()}
+        {activeWorkspaceTab === 'settings' && renderSettingsTab()}
+      </section>
+    )
+  }
+
+  function renderScheduleTab() {
+    const lookaheadTasks = selectedTasks.filter((task) => daysUntil(task.due_date) >= 0 && daysUntil(task.due_date) <= 42)
+
+    return (
+      <div className="grid-main">
+        <section className="panel">
+          <PanelTitle icon={CalendarDays} title={editingTaskId ? 'Edit Activity' : 'WBS / Activities'} />
+          <form className="inline-form project-inline-form" onSubmit={saveTask}>
+            <Field label="Activity" name="title" value={taskForm.title} onChange={setForm(setTaskForm)} required />
+            <Select label="Status" name="status" value={taskForm.status} onChange={setForm(setTaskForm)}>
+              <option value="todo">Todo</option>
+              <option value="in_progress">In progress</option>
+              <option value="blocked">Blocked</option>
+              <option value="done">Done</option>
+            </Select>
+            <Select label="Priority" name="priority" value={taskForm.priority} onChange={setForm(setTaskForm)}>
+              <option value="normal">Normal</option>
+              <option value="high">High</option>
+              <option value="urgent">Urgent</option>
+            </Select>
+            <Field label="Progress %" type="number" min="0" max="100" name="progress_percent" value={taskForm.progress_percent} onChange={setForm(setTaskForm)} />
+            <Field label="Due" type="date" name="due_date" value={taskForm.due_date} onChange={setForm(setTaskForm)} />
+            <button type="submit" className="icon-button solid" title={editingTaskId ? 'Save activity' : 'Add activity'}>{editingTaskId ? <CheckCircle2 size={17} /> : <Plus size={17} />}</button>
+            {editingTaskId && <button type="button" className="table-action" onClick={cancelTaskEdit}>Cancel</button>}
           </form>
+          <DataTable
+            columns={['Activity', 'Status', 'Priority', 'Progress', 'Due', 'Actions']}
+            rows={selectedTasks.map((task) => [
+              task.title,
+              <Badge key="status" value={task.status} />,
+              <Badge key="priority" value={task.priority} />,
+              <div key="progress" className="erp-table-progress"><span>{task.progress_percent || 0}%</span><DashboardProgress value={task.progress_percent || 0} /></div>,
+              shortDate(task.due_date),
+              <div key="actions" className="row-actions">
+                <button type="button" className="table-action" onClick={() => editTask(task)}>Edit</button>
+                {task.status !== 'done' && <button type="button" className="table-action" onClick={() => runAction(() => api.updateTask(selectedProject.id, task.id, { status: 'done' }), 'Activity completed.', { refreshProjectOnly: true })}>Done</button>}
+                <button type="button" className="table-action danger" onClick={() => archiveTask(task)}>Archive</button>
+              </div>,
+            ])}
+          />
+        </section>
+        <section className="panel">
+          <PanelTitle icon={Workflow} title="Gantt / Look-Ahead" />
+          <div className="project-gantt-list">
+            {selectedTasks.map((task) => (
+              <article key={task.id}>
+                <div><strong>{task.title}</strong><span>{shortDate(task.due_date) || 'No due date'}</span></div>
+                <DashboardProgress value={task.progress_percent || 0} tone={taskIsLate(task) ? 'red' : 'blue'} />
+              </article>
+            ))}
+            {!selectedTasks.length && <div className="empty-cell">No schedule activities yet.</div>}
+          </div>
+          <DataTable columns={['Look-ahead', 'Activity', 'Due', 'Status']} rows={lookaheadTasks.map((task) => [`${Math.max(0, daysUntil(task.due_date))} days`, task.title, shortDate(task.due_date), <Badge key="status" value={task.status} />])} />
         </section>
       </div>
+    )
+  }
 
-      {selectedProject && (
-        <section className="project-workspace">
-          <div className="project-head">
-            <div>
-              <p>{selectedProject.code}</p>
-              <h2>{selectedProject.name}</h2>
-            </div>
-            <div className="project-metrics">
-              <Metric label="Progress" value={`${selectedProject.progress_percent}%`} />
-              <Metric label="Budget" value={money(selectedProject.budget_total)} />
-              <Metric label="Actual" value={money(selectedProject.actual_cost)} />
-              <Metric label="Variance" value={money(Number(selectedProject.budget_total) - Number(selectedProject.actual_cost))} />
-            </div>
-          </div>
+  function renderBudgetTab() {
+    const budget = sumBy(selectedBudgetLines, 'budget_amount')
+    const committed = sumBy(selectedBudgetLines, 'committed_amount')
+    const actual = sumBy(selectedBudgetLines, 'actual_amount')
+    const forecast = sumBy(selectedBudgetLines, 'forecast_amount')
 
-          {canAdminister && (
-            <section className="panel">
-              <PanelTitle icon={Settings} title="Project Administration" />
-              <form className="form-grid procurement-form" onSubmit={saveProjectAdministration}>
-                <Field label="Project name" name="name" value={projectAdminForm.name} onChange={setForm(setProjectAdminForm)} required />
-                <Select label="Status" name="status" value={projectAdminForm.status} onChange={setForm(setProjectAdminForm)}>
-                  <option value="planning">Planning</option>
-                  <option value="active">Active</option>
-                  <option value="on_hold">On hold</option>
-                  <option value="completed">Completed</option>
-                  <option value="cancelled">Cancelled</option>
-                </Select>
-                <Select label="Health" name="health_status" value={projectAdminForm.health_status} onChange={setForm(setProjectAdminForm)}>
-                  <option value="on_track">On track</option>
-                  <option value="at_risk">At risk</option>
-                  <option value="critical">Critical</option>
-                </Select>
-                <Select label="Risk" name="risk_level" value={projectAdminForm.risk_level} onChange={setForm(setProjectAdminForm)}>
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
-                  <option value="critical">Critical</option>
-                </Select>
-                <Field label="Contract value" type="number" name="contract_value" value={projectAdminForm.contract_value} onChange={setForm(setProjectAdminForm)} />
-                <Field label="Progress %" type="number" min="0" max="100" name="progress_percent" value={projectAdminForm.progress_percent} onChange={setForm(setProjectAdminForm)} />
-                <Field label="Start" type="date" name="start_date" value={projectAdminForm.start_date} onChange={setForm(setProjectAdminForm)} />
-                <Field label="Target end" type="date" name="target_end_date" value={projectAdminForm.target_end_date} onChange={setForm(setProjectAdminForm)} />
-                <Field className="span-2" label="Site address" name="site_address" value={projectAdminForm.site_address} onChange={setForm(setProjectAdminForm)} />
-                <div className="row-actions">
-                  <button type="submit" className="primary-action">
-                    <CheckCircle2 size={17} />
-                    Save project
-                  </button>
-                  <button type="button" className="table-action danger" onClick={archiveSelectedProject}>
-                    Archive project
-                  </button>
-                </div>
-              </form>
-            </section>
-          )}
+    return (
+      <section className="panel">
+        <PanelTitle icon={WalletCards} title="Budget & Cost Control" />
+        <div className="project-cost-equation">
+          <Metric label="Original Budget" value={money(budget)} />
+          <Metric label="Approved Changes" value={money(Number(selectedMeta.approved_variations || 0))} />
+          <Metric label="Revised Budget" value={money(budget + Number(selectedMeta.approved_variations || 0))} />
+          <Metric label="Remaining Budget" value={money(budget - committed - actual)} />
+          <Metric label="Forecast Cost" value={money(forecast || Number(selectedProject.forecast_to_complete || 0))} />
+        </div>
+        <form className="inline-form project-inline-form" onSubmit={saveBudgetLine}>
+          <Field label="Cost Code" name="cost_code" value={budgetForm.cost_code} onChange={setForm(setBudgetForm)} placeholder="Auto-generated" />
+          <Field label="Description" name="description" value={budgetForm.description} onChange={setForm(setBudgetForm)} required />
+          <Select label="Category" name="category" value={budgetForm.category} onChange={setForm(setBudgetForm)}>
+            <option value="materials">Materials</option>
+            <option value="labour">Labour</option>
+            <option value="equipment">Equipment</option>
+            <option value="subcontractor">Subcontractor</option>
+            <option value="overheads">Overheads</option>
+            <option value="procurement">Procurement</option>
+            <option value="other">Other</option>
+          </Select>
+          <Field label="Budget" type="number" name="budget_amount" value={budgetForm.budget_amount} onChange={setForm(setBudgetForm)} required />
+          <button type="submit" className="icon-button solid" title={editingBudgetLineId ? 'Save budget line' : 'Add budget line'}>{editingBudgetLineId ? <CheckCircle2 size={17} /> : <Plus size={17} />}</button>
+          {editingBudgetLineId && <button type="button" className="table-action" onClick={cancelBudgetLineEdit}>Cancel</button>}
+        </form>
+        <DataTable
+          columns={['Cost Code', 'Description', 'Category', 'Budget', 'Committed', 'Actual', 'Forecast', 'Variance', 'Actions']}
+          rows={selectedBudgetLines.map((line) => [
+            line.cost_code,
+            line.description,
+            labelize(line.category),
+            money(line.budget_amount),
+            money(line.committed_amount),
+            money(line.actual_amount),
+            money(line.forecast_amount),
+            money(Number(line.budget_amount || 0) - Number(line.committed_amount || 0) - Number(line.actual_amount || 0)),
+            <div key="actions" className="row-actions"><button type="button" className="table-action" onClick={() => editBudgetLine(line)}>Edit</button><button type="button" className="table-action danger" onClick={() => archiveBudgetLine(line)}>Archive</button></div>,
+          ])}
+        />
+      </section>
+    )
+  }
 
-          <div className="grid-main">
-            <section className="panel">
-              <PanelTitle icon={CheckCircle2} title={editingTaskId ? 'Edit Task' : 'Tasks'} />
-              <form className="inline-form" onSubmit={saveTask}>
-                <Field label="Task" name="title" value={taskForm.title} onChange={setForm(setTaskForm)} required />
-                <Select label="Status" name="status" value={taskForm.status} onChange={setForm(setTaskForm)}>
-                  <option value="todo">Todo</option>
-                  <option value="in_progress">In progress</option>
-                  <option value="blocked">Blocked</option>
-                  <option value="done">Done</option>
-                </Select>
-                <Select label="Priority" name="priority" value={taskForm.priority} onChange={setForm(setTaskForm)}>
-                  <option value="normal">Normal</option>
-                  <option value="high">High</option>
-                  <option value="urgent">Urgent</option>
-                </Select>
-                <Field label="Due" type="date" name="due_date" value={taskForm.due_date} onChange={setForm(setTaskForm)} />
-                <button type="submit" className="icon-button solid" title={editingTaskId ? 'Save task' : 'Add task'}>
-                  {editingTaskId ? <CheckCircle2 size={17} /> : <Plus size={17} />}
-                </button>
-                {editingTaskId && (
-                  <button type="button" className="table-action" onClick={cancelTaskEdit}>
-                    Cancel
-                  </button>
-                )}
-              </form>
-              <DataTable
-                columns={['Task', 'Status', 'Priority', 'Progress', 'Due', 'Actions']}
-                rows={(selectedProject.tasks || []).map((task) => [
-                  task.title,
-                  <Badge key="status" value={task.status} />,
-                  <Badge key="priority" value={task.priority} />,
-                  `${task.progress_percent}%`,
-                  shortDate(task.due_date),
-                  <div key="actions" className="row-actions">
-                    <button type="button" className="table-action" onClick={() => editTask(task)}>
-                      Edit
-                    </button>
-                    {task.status !== 'done' && (
-                      <button
-                        type="button"
-                        className="table-action"
-                        onClick={() =>
-                          runAction(
-                            () => api.updateTask(selectedProject.id, task.id, { status: 'done' }),
-                            'Task completed.',
-                            { refreshProjectOnly: true },
-                          )
-                        }
-                      >
-                        Done
-                      </button>
-                    )}
-                    <button type="button" className="table-action danger" onClick={() => archiveTask(task)}>
-                      Archive
-                    </button>
-                  </div>,
-                ])}
-              />
-            </section>
-
-            <section className="panel">
-              <PanelTitle icon={WalletCards} title={editingBudgetLineId ? 'Edit Budget Line' : 'Budget Lines'} />
-              <form className="inline-form" onSubmit={saveBudgetLine}>
-                <Field label="Cost Code" name="cost_code" value={budgetForm.cost_code} onChange={setForm(setBudgetForm)} placeholder="Auto-generated" />
-                <Field label="Description" name="description" value={budgetForm.description} onChange={setForm(setBudgetForm)} required />
-                <Select label="Category" name="category" value={budgetForm.category} onChange={setForm(setBudgetForm)}>
-                  <option value="materials">Materials</option>
-                  <option value="labour">Labour</option>
-                  <option value="equipment">Equipment</option>
-                  <option value="subcontractor">Subcontractor</option>
-                  <option value="overheads">Overheads</option>
-                </Select>
-                <Field label="Budget" type="number" name="budget_amount" value={budgetForm.budget_amount} onChange={setForm(setBudgetForm)} required />
-                <button type="submit" className="icon-button solid" title={editingBudgetLineId ? 'Save budget line' : 'Add budget line'}>
-                  {editingBudgetLineId ? <CheckCircle2 size={17} /> : <Plus size={17} />}
-                </button>
-                {editingBudgetLineId && (
-                  <button type="button" className="table-action" onClick={cancelBudgetLineEdit}>
-                    Cancel
-                  </button>
-                )}
-              </form>
-              <DataTable
-                columns={['Code', 'Description', 'Category', 'Budget', 'Committed', 'Actual', 'Forecast', 'Actions']}
-                rows={(selectedProject.budget_lines || []).map((line) => [
-                  line.cost_code,
-                  line.description,
-                  labelize(line.category),
-                  money(line.budget_amount),
-                  money(line.committed_amount),
-                  money(line.actual_amount),
-                  money(line.forecast_amount),
-                  <div key="actions" className="row-actions">
-                    <button type="button" className="table-action" onClick={() => editBudgetLine(line)}>
-                      Edit
-                    </button>
-                    <button type="button" className="table-action danger" onClick={() => archiveBudgetLine(line)}>
-                      Archive
-                    </button>
-                  </div>,
-                ])}
-              />
-            </section>
-          </div>
+  function renderCommercialTab() {
+    return (
+      <div className="grid-main">
+        <section className="panel">
+          <PanelTitle icon={Calculator} title="Main Contract" />
+          <DataTable columns={['Item', 'Value']} rows={[
+            ['Original Contract Value', money(selectedProject.contract_value)],
+            ['Approved Variations', money(selectedMeta.approved_variations || 0)],
+            ['Revised Contract Value', money(selectedMeta.revised_contract_value || selectedProject.contract_value)],
+            ['Retention', `${selectedMeta.retention_percent || 0}%`],
+            ['Advance Payment', money(selectedMeta.advance_payment || 0)],
+            ['Payment Terms', selectedMeta.payment_terms || 'Not set'],
+            ['Funding Source', selectedMeta.funding_source || 'Not set'],
+            ['Tax Configuration', selectedMeta.tax_configuration || 'Not set'],
+          ]} />
         </section>
-      )}
+        <section className="panel">
+          <PanelTitle icon={FileText} title="Contracts & Notices" />
+          <DataTable columns={['Contract', 'Supplier', 'Status', 'Value', 'Dates']} rows={selectedSupplierContracts.map((contract) => [contract.contract_number || contract.title, contract.supplier?.name || '', <Badge key="status" value={contract.status} />, money(contract.contract_value), `${shortDate(contract.start_date)} - ${shortDate(contract.end_date)}`])} />
+        </section>
+      </div>
+    )
+  }
+
+  function renderProcurementTab() {
+    return (
+      <section className="panel">
+        <PanelTitle icon={Truck} title="Project Procurement" />
+        <div className="project-cost-equation">
+          <Metric label="Material Requests" value={selectedRequisitions.length} />
+          <Metric label="RFQs" value={selectedRfqs.length} />
+          <Metric label="Purchase Orders" value={selectedOrders.length} />
+          <Metric label="GRNs" value={selectedReceipts.length} />
+          <Metric label="Supplier Invoices" value={selectedSupplierInvoices.length} />
+        </div>
+        <DataTable columns={['PO', 'Supplier', 'Status', 'Delivery', 'Payment', 'Total']} rows={selectedOrders.map((order) => [order.po_number, order.supplier?.name || '', <Badge key="status" value={order.status} />, shortDate(order.expected_delivery_date), <Badge key="payment" value={order.payment_status} />, money(order.total_amount)])} />
+      </section>
+    )
+  }
+
+  function renderSiteTab() {
+    return (
+      <div className="grid-main">
+        <section className="panel">
+          <PanelTitle icon={MapPinned} title="Daily Site Reports" />
+          <DataTable columns={['Report', 'Date', 'Weather', 'Labour', 'Status']} rows={selectedDailyReports.map((report) => [report.report_number, shortDate(report.report_date), report.weather || '', report.labour_count || 0, <Badge key="status" value={report.status} />])} />
+        </section>
+        <section className="panel">
+          <PanelTitle icon={AlertTriangle} title="Site Issues" />
+          <DataTable columns={['Issue', 'Priority', 'Status', 'Due', 'Assigned']} rows={selectedSiteIssues.map((issue) => [issue.title, <Badge key="priority" value={issue.priority} />, <Badge key="status" value={issue.status} />, shortDate(issue.due_date), issue.assigned_to || ''])} />
+        </section>
+      </div>
+    )
+  }
+
+  function renderWorkforceTab() {
+    return (
+      <section className="panel">
+        <PanelTitle icon={Users} title="Project Workforce" />
+        <div className="project-cost-equation">
+          <Metric label="Assigned Employees" value={selectedAllocations.length} />
+          <Metric label="Attendance Records" value={selectedAttendance.length} />
+          <Metric label="Timesheets" value={selectedTimesheets.length} />
+          <Metric label="Labour Cost" value={money(sumBy(selectedTimesheets, 'cost_amount'))} />
+        </div>
+        <DataTable columns={['Employee', 'Role', 'Supervisor', 'Allocation', 'Dates', 'Status']} rows={selectedAllocations.map((allocation) => [allocation.employee_profile?.user?.name || '', allocation.role, allocation.supervisor?.name || '', `${allocation.allocation_percent}%`, `${shortDate(allocation.start_date)} - ${shortDate(allocation.end_date)}`, <Badge key="status" value={allocation.status} />])} />
+      </section>
+    )
+  }
+
+  function renderEquipmentTab() {
+    return (
+      <section className="panel">
+        <PanelTitle icon={Truck} title="Project Equipment" />
+        <div className="project-cost-equation">
+          <Metric label="Assigned Assets" value={selectedEquipmentAssets.length || selectedEquipmentAssignments.length} />
+          <Metric label="Fuel Cost" value={money(sumBy(selectedFuelLogs, 'total_cost'))} />
+          <Metric label="Maintenance Due" value={selectedEquipmentAssets.filter((asset) => asset.next_service_due_on).length} />
+          <Metric label="Active Assignments" value={selectedEquipmentAssignments.filter((assignment) => assignment.status === 'active').length} />
+        </div>
+        <DataTable columns={['Asset', 'Category', 'Status', 'Meter', 'Rate', 'Service Due']} rows={selectedEquipmentAssets.map((asset) => [asset.name, labelize(asset.category), <Badge key="status" value={asset.status} />, asset.meter_reading || '', money(asset.hourly_rate), shortDate(asset.next_service_due_on)])} />
+      </section>
+    )
+  }
+
+  function renderQualityHseTab() {
+    return (
+      <div className="grid-main">
+        <section className="panel">
+          <PanelTitle icon={ShieldCheck} title="Quality" />
+          <DataTable columns={['Record', 'Type', 'Area', 'Score', 'Status']} rows={selectedInspections.map((inspection) => [inspection.inspection_number, labelize(inspection.type), inspection.area, inspection.score || '', <Badge key="status" value={inspection.status} />])} />
+          <DataTable columns={['NCR', 'Title', 'Severity', 'Due', 'Status']} rows={selectedNcrs.map((ncr) => [ncr.ncr_number, ncr.title, <Badge key="severity" value={ncr.severity} />, shortDate(ncr.due_date), <Badge key="status" value={ncr.status} />])} />
+        </section>
+        <section className="panel">
+          <PanelTitle icon={AlertTriangle} title="HSE" />
+          <DataTable columns={['Incident', 'Severity', 'Location', 'Occurred', 'Status']} rows={selectedIncidents.map((incident) => [incident.incident_number, <Badge key="severity" value={incident.severity} />, incident.location || '', shortDate(incident.occurred_at), <Badge key="status" value={incident.status} />])} />
+          <DataTable columns={['Observation', 'Severity', 'Location', 'Observed', 'Status']} rows={selectedObservations.map((observation) => [observation.observation_number, <Badge key="severity" value={observation.severity} />, observation.location || '', shortDate(observation.observed_at), <Badge key="status" value={observation.status} />])} />
+          <DataTable columns={['Toolbox Talk', 'Topic', 'Date', 'Attendees', 'Status']} rows={selectedToolboxTalks.map((talk) => [talk.talk_number, talk.topic, shortDate(talk.talk_date), talk.attendee_count || 0, <Badge key="status" value={talk.status} />])} />
+        </section>
+      </div>
+    )
+  }
+
+  function renderRfiTab() {
+    return <section className="panel"><PanelTitle icon={ClipboardList} title="RFIs" /><DataTable columns={['RFI', 'Title', 'Priority', 'Due', 'Status']} rows={rfiItems.map((item) => [item.item_number, item.title, <Badge key="priority" value={item.priority} />, shortDate(item.due_date), <Badge key="status" value={item.status} />])} /></section>
+  }
+
+  function renderSubmittalTab() {
+    return <section className="panel"><PanelTitle icon={Upload} title="Submittals" /><DataTable columns={['Submittal', 'Title', 'Discipline', 'Due', 'Status']} rows={submittalItems.map((item) => [item.submittal_number || item.item_number, item.title, item.discipline || item.item_type || '', shortDate(item.due_date), <Badge key="status" value={item.status} />])} /></section>
+  }
+
+  function renderRisksIssuesTab() {
+    return (
+      <div className="grid-main">
+        <section className="panel">
+          <PanelTitle icon={AlertTriangle} title="Risks" />
+          <DataTable columns={['Risk', 'Impact', 'Owner', 'Mitigation']} rows={[
+            ['Overall risk level', labelize(selectedProject.risk_level), selectedMeta.project_manager || '', selectedProject.risk_level === 'low' ? 'Monitor through normal controls.' : 'Review mitigation and recovery actions.'],
+          ]} />
+        </section>
+        <section className="panel">
+          <PanelTitle icon={AlertTriangle} title="Issues" />
+          <DataTable columns={['Issue', 'Priority', 'Status', 'Due']} rows={selectedSiteIssues.map((issue) => [issue.title, <Badge key="priority" value={issue.priority} />, <Badge key="status" value={issue.status} />, shortDate(issue.due_date)])} />
+        </section>
+      </div>
+    )
+  }
+
+  function renderDocumentsTab() {
+    return (
+      <div className="grid-main">
+        <section className="panel">
+          <PanelTitle icon={FileText} title="Documents" />
+          <DataTable columns={['Document', 'Type', 'Status', 'Uploaded']} rows={selectedDocuments.map((document) => [document.document_number || document.title, labelize(document.document_type), <Badge key="status" value={document.status} />, shortDate(document.created_at)])} />
+        </section>
+        <section className="panel">
+          <PanelTitle icon={FileText} title="Drawings" />
+          <DataTable columns={['Drawing', 'Title', 'Status', 'Revisions']} rows={selectedDrawings.map((drawing) => [drawing.drawing_number, drawing.title, <Badge key="status" value={drawing.status} />, (drawing.revisions || []).length])} />
+        </section>
+      </div>
+    )
+  }
+
+  function renderFinanceTab() {
+    return (
+      <section className="panel">
+        <PanelTitle icon={WalletCards} title="Project Finance" />
+        <div className="project-cost-equation">
+          <Metric label="Invoiced" value={money(sumBy(selectedInvoices, 'total_amount'))} />
+          <Metric label="Paid" value={money(sumBy(selectedInvoices, 'amount_paid'))} />
+          <Metric label="Outstanding" value={money(sumBy(selectedInvoices, 'balance_due'))} />
+          <Metric label="Expenses" value={money(sumBy(selectedExpenses, 'amount'))} />
+        </div>
+        <DataTable columns={['Invoice', 'Title', 'Status', 'Due', 'Total', 'Paid', 'Balance']} rows={selectedInvoices.map((invoice) => [invoice.invoice_number, invoice.title, <Badge key="status" value={invoice.status} />, shortDate(invoice.due_date), money(invoice.total_amount), money(invoice.amount_paid), money(invoice.balance_due)])} />
+      </section>
+    )
+  }
+
+  function renderClientTab() {
+    return (
+      <section className="panel">
+        <PanelTitle icon={Handshake} title="Client Controls" />
+        <DataTable columns={['Approval', 'Title', 'Due', 'Status', 'Decision']} rows={selectedApprovals.map((approval) => [approval.approval_number, approval.title, shortDate(approval.due_date), <Badge key="status" value={approval.status} />, approval.decision_notes || ''])} />
+      </section>
+    )
+  }
+
+  function renderActivityTab() {
+    return (
+      <section className="panel">
+        <PanelTitle icon={Clock3} title="Project Activity Timeline" />
+        <div className="project-activity-list">
+          {projectActivity.map((item) => <ProjectActivityItem key={`${item.title}-${item.at}-${item.detail}`} item={item} />)}
+          {!projectActivity.length && <div className="empty-cell">No project activity yet.</div>}
+        </div>
+      </section>
+    )
+  }
+
+  function renderCloseoutTab() {
+    const closeoutRows = [
+      ['Practical Completion', selectedProject.status === 'practical_completion' || closeoutReached(selectedProject.status, 'practical_completion')],
+      ['Snag List', selectedSiteIssues.filter((issue) => String(issue.title || '').toLowerCase().includes('snag')).length > 0],
+      ['Punch List', selectedSiteIssues.filter((issue) => String(issue.title || '').toLowerCase().includes('punch')).length > 0],
+      ['As-Built Drawings', selectedDrawings.some((drawing) => String(drawing.title || '').toLowerCase().includes('as-built'))],
+      ['O&M Manuals', selectedDocuments.some((document) => String(document.title || '').toLowerCase().includes('manual'))],
+      ['Final Account', selectedProject.status === 'final_completion' || closeoutReached(selectedProject.status, 'final_completion')],
+      ['Defects Liability Period', selectedProject.status === 'defects_liability' || Boolean(selectedMeta.defects_liability_end_date)],
+      ['Closed / Archived', ['closed', 'cancelled'].includes(selectedProject.status)],
+    ]
+
+    return <section className="panel"><PanelTitle icon={CheckCircle2} title="Project Closeout" /><DataTable columns={['Closeout Item', 'Status']} rows={closeoutRows.map(([item, done]) => [item, <Badge key={item} value={done ? 'complete' : 'pending'} />])} /></section>
+  }
+
+  function renderSettingsTab() {
+    const formHandler = setForm(setProjectAdminForm)
+
+    return (
+      <section className="panel">
+        <PanelTitle icon={Settings} title="Project Administration" />
+        {canAdminister ? (
+          <form className="form-grid project-create-grid" onSubmit={saveProjectAdministration}>
+            <Field label="Project Number" name="code" value={projectAdminForm.code} onChange={formHandler} />
+            <Field label="Project Name" name="name" value={projectAdminForm.name} onChange={formHandler} required />
+            <Select label="Client" name="client_id" value={projectAdminForm.client_id} onChange={formHandler}><option value="">No client selected</option>{clients.map((client) => <option key={client.id} value={client.id}>{client.name}</option>)}</Select>
+            <Field label="Project Type" name="project_type" value={projectAdminForm.project_type} onChange={formHandler} />
+            <Select label="Status" name="status" value={projectAdminForm.status} onChange={formHandler}>{projectStatusOptions.map((status) => <option key={status} value={status}>{labelize(status)}</option>)}</Select>
+            <Select label="Health" name="health_status" value={projectAdminForm.health_status} onChange={formHandler}>{healthOptions.map((health) => <option key={health} value={health}>{labelize(health)}</option>)}</Select>
+            <Select label="Risk" name="risk_level" value={projectAdminForm.risk_level} onChange={formHandler}>{riskOptions.map((risk) => <option key={risk} value={risk}>{labelize(risk)}</option>)}</Select>
+            <Field label="Progress %" type="number" min="0" max="100" name="progress_percent" value={projectAdminForm.progress_percent} onChange={formHandler} />
+            <Field label="Contract Value" type="number" name="contract_value" value={projectAdminForm.contract_value} onChange={formHandler} />
+            <Field label="Approved Variations" type="number" name="approved_variations" value={projectAdminForm.approved_variations} onChange={formHandler} />
+            <Field label="Revised Contract Value" type="number" name="revised_contract_value" value={projectAdminForm.revised_contract_value} onChange={formHandler} />
+            <PickerField label="Currency" name="currency" value={projectAdminForm.currency} options={currencyOptions} onChange={formHandler} searchPlaceholder="Search currencies" />
+            <Field label="Start" type="date" name="start_date" value={projectAdminForm.start_date} onChange={formHandler} />
+            <Field label="Target End" type="date" name="target_end_date" value={projectAdminForm.target_end_date} onChange={formHandler} />
+            <Field label="Project Manager" name="project_manager" value={projectAdminForm.project_manager} onChange={formHandler} list="project-user-list" />
+            <Field label="Site Manager" name="site_manager" value={projectAdminForm.site_manager} onChange={formHandler} list="project-user-list" />
+            <Field className="span-2" label="Site Address" name="site_address" value={projectAdminForm.site_address} onChange={formHandler} />
+            <TextArea className="span-2" label="Description" name="description" value={projectAdminForm.description} onChange={formHandler} />
+            <div className="row-actions span-2">
+              <button type="submit" className="primary-action"><CheckCircle2 size={17} />Save project</button>
+              <button type="button" className="table-action danger" onClick={archiveSelectedProject}>Archive project</button>
+            </div>
+          </form>
+        ) : (
+          <DataTable columns={['Setting', 'Value']} rows={Object.entries(selectedMeta).map(([key, value]) => [labelize(key), String(value ?? '')])} />
+        )}
+      </section>
+    )
+  }
+
+  return (
+    <section className="view-stack projects-module">
+      <nav className="module-tabs" aria-label="Projects module">
+        {projectSections.map(([key, label, Icon]) => (
+          <button key={key} type="button" className={activeProjectSection === key ? 'active' : ''} onClick={() => setActiveProjectSection(key)}>
+            <Icon size={15} />
+            {label}
+          </button>
+        ))}
+        {selectedProject && (
+          <button type="button" className={activeProjectSection === 'workspace' ? 'active' : ''} onClick={() => setActiveProjectSection('workspace')}>
+            <FolderKanban size={15} />
+            Project Workspace
+          </button>
+        )}
+      </nav>
+
+      {activeProjectSection === 'portfolio' && renderPortfolioDashboard()}
+      {activeProjectSection === 'register' && <>{renderProjectFilters()}{renderProjectRegister(filteredProjects)}</>}
+      {activeProjectSection === 'new' && renderNewProject()}
+      {activeProjectSection === 'templates' && <section className="panel"><PanelTitle icon={Layers3} title="Project Templates" /><div className="empty-cell">No project templates configured yet.</div></section>}
+      {activeProjectSection === 'archived' && <section className="panel"><PanelTitle icon={Archive} title="Archived Projects" /><DataTable columns={['Project', 'Client', 'Status', 'Health']} rows={projects.filter((project) => ['closed', 'cancelled'].includes(project.status)).map((project) => [project.name, projectClientName(project), <Badge key="status" value={project.status} />, <Badge key="health" value={project.health_status} />])} /></section>}
+      {activeProjectSection === 'reports' && <section className="panel"><PanelTitle icon={BarChart3} title="Project Reports" /><DataTable columns={['Report', 'Records']} rows={[['Portfolio Register', filteredProjects.length], ['Schedule Activities', selectedTasks.length], ['Budget Lines', selectedBudgetLines.length], ['Purchase Orders', selectedOrders.length], ['Site Reports', selectedDailyReports.length]]} /></section>}
+      {activeProjectSection === 'workspace' && renderProjectWorkspace()}
     </section>
   )
+}
+
+function uniqueValues(values = []) {
+  return [...new Set(values.map((value) => String(value || '').trim()).filter(Boolean))]
+}
+
+function projectMeta(project) {
+  return project?.metadata && typeof project.metadata === 'object' ? project.metadata : {}
+}
+
+function projectClientName(project) {
+  return project?.client?.name || project?.client_name || ''
+}
+
+function projectMatchesFilters(project, filters) {
+  const meta = projectMeta(project)
+  const query = String(filters.q || '').trim().toLowerCase()
+  const haystack = [
+    project.name,
+    project.code,
+    projectClientName(project),
+    project.branch?.name,
+    meta.project_manager,
+    meta.project_type,
+    meta.region,
+    meta.city,
+  ].join(' ').toLowerCase()
+  const startDate = dateInputValue(project.start_date)
+  const endDate = dateInputValue(project.target_end_date)
+  const contractValue = Number(project.contract_value || 0)
+
+  if (query && !haystack.includes(query)) return false
+  if (filters.branch_id && String(project.branch_id || project.branch?.id) !== String(filters.branch_id)) return false
+  if (filters.client_id && String(project.client_id || project.client?.id) !== String(filters.client_id)) return false
+  if (filters.project_manager && meta.project_manager !== filters.project_manager) return false
+  if (filters.project_type && meta.project_type !== filters.project_type) return false
+  if (filters.status && project.status !== filters.status) return false
+  if (filters.health_status && project.health_status !== filters.health_status) return false
+  if (filters.region && meta.region !== filters.region) return false
+  if (filters.start_from && startDate && startDate < filters.start_from) return false
+  if (filters.end_to && endDate && endDate > filters.end_to) return false
+  if (filters.min_value && contractValue < Number(filters.min_value)) return false
+  if (filters.max_value && contractValue > Number(filters.max_value)) return false
+
+  return true
+}
+
+function daysUntil(value) {
+  if (!value) return Number.POSITIVE_INFINITY
+
+  const target = new Date(value)
+  if (Number.isNaN(target.getTime())) return Number.POSITIVE_INFINITY
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  target.setHours(0, 0, 0, 0)
+
+  return Math.ceil((target.getTime() - today.getTime()) / 86400000)
+}
+
+function projectScheduleVarianceDays(project) {
+  if (!project?.target_end_date || ['completed', 'closed', 'cancelled', 'final_completion'].includes(project.status)) return 0
+
+  return daysUntil(project.target_end_date)
+}
+
+function projectScheduleLabel(project) {
+  const days = projectScheduleVarianceDays(project)
+
+  if (!project?.target_end_date) return 'Not scheduled'
+  if (days < 0) return `${Math.abs(days)} days late`
+  if (days === 0) return 'Due today'
+
+  return `${days} days remaining`
+}
+
+function projectOverBudget(project) {
+  const budget = Number(project?.budget_total || 0)
+  if (budget <= 0) return false
+
+  return Number(project.actual_cost || 0) > budget || Number(project.forecast_to_complete || 0) > budget
+}
+
+function taskIsLate(task) {
+  return task?.due_date && task.status !== 'done' && daysUntil(task.due_date) < 0
+}
+
+function plannedProgress(project) {
+  if (!project?.start_date || !project?.target_end_date) return 0
+
+  const start = new Date(project.start_date)
+  const end = new Date(project.target_end_date)
+  const now = new Date()
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) return 0
+
+  return Math.max(0, Math.min(100, Math.round(((now.getTime() - start.getTime()) / (end.getTime() - start.getTime())) * 100)))
+}
+
+function projectCashPosition(project) {
+  const invoices = project?.invoices || []
+  const supplierInvoices = project?.supplier_invoices || []
+  const expenses = project?.expenses || []
+
+  return sumBy(invoices, 'amount_paid') - sumBy(supplierInvoices, 'amount_paid') - sumBy(expenses.filter((expense) => expense.paid_at), 'amount')
+}
+
+function projectHealthRows(project) {
+  const ncrs = project?.non_conformance_reports || []
+  const incidents = project?.safety_incidents || []
+  const observations = project?.safety_observations || []
+  const budget = Number(project?.budget_total || 0)
+  const actual = Number(project?.actual_cost || 0)
+  const cash = projectCashPosition(project)
+  const scheduleDays = projectScheduleVarianceDays(project)
+  const openQuality = ncrs.filter((item) => !['closed', 'verified'].includes(item.status)).length
+  const openHse = incidents.filter((item) => item.status !== 'closed').length + observations.filter((item) => item.status !== 'closed').length
+
+  return [
+    { label: 'Cost', value: budget > 0 ? `${Math.round((actual / budget) * 100)}% used` : 'Not set', tone: budget > 0 && actual > budget ? 'red' : actual > budget * 0.9 ? 'amber' : 'green' },
+    { label: 'Schedule', value: projectScheduleLabel(project), tone: scheduleDays < 0 ? 'red' : scheduleDays <= 14 ? 'amber' : 'green' },
+    { label: 'Quality', value: `${openQuality} open NCRs`, tone: openQuality > 3 ? 'red' : openQuality > 0 ? 'amber' : 'green' },
+    { label: 'HSE', value: `${openHse} open items`, tone: openHse > 3 ? 'red' : openHse > 0 ? 'amber' : 'green' },
+    { label: 'Cash Flow', value: money(cash), tone: cash < 0 ? 'red' : cash === 0 ? 'amber' : 'green' },
+    { label: 'Risk', value: labelize(project?.risk_level || 'medium'), tone: ['critical', 'high'].includes(project?.risk_level) ? 'red' : project?.risk_level === 'medium' ? 'amber' : 'green' },
+  ]
+}
+
+function buildProjectActivity(project) {
+  const events = []
+  const add = (at, title, detail = '') => {
+    if (at) events.push({ at, title, detail })
+  }
+
+  add(project.created_at, 'Project created', project.code)
+  add(project.updated_at, 'Project updated', project.name)
+  ;(project.tasks || []).forEach((task) => add(task.updated_at || task.created_at, `Activity ${labelize(task.status || 'updated')}`, task.title))
+  ;(project.purchase_orders || []).forEach((order) => add(order.approved_at || order.updated_at || order.created_at, `PO ${labelize(order.status || 'updated')}`, order.po_number))
+  ;(project.purchase_requisitions || []).forEach((request) => add(request.submitted_at || request.updated_at || request.created_at, `Requisition ${labelize(request.status || 'updated')}`, request.requisition_number || request.title))
+  ;(project.field_daily_reports || []).forEach((report) => add(report.updated_at || report.created_at, 'Daily report submitted', report.report_number))
+  ;(project.field_issues || []).forEach((issue) => add(issue.updated_at || issue.created_at, `Site issue ${labelize(issue.status || 'updated')}`, issue.title))
+  ;(project.non_conformance_reports || []).forEach((ncr) => add(ncr.updated_at || ncr.created_at, `NCR ${labelize(ncr.status || 'updated')}`, ncr.ncr_number || ncr.title))
+  ;(project.client_approvals || []).forEach((approval) => add(approval.reviewed_at || approval.submitted_at || approval.created_at, `Client approval ${labelize(approval.status || 'updated')}`, approval.approval_number || approval.title))
+  ;(project.consultant_submittals || []).forEach((submittal) => add(submittal.reviewed_at || submittal.submitted_at || submittal.created_at, `Submittal ${labelize(submittal.status || 'updated')}`, submittal.submittal_number || submittal.title))
+  ;(project.invoices || []).forEach((invoice) => add(invoice.paid_at || invoice.issued_at || invoice.updated_at || invoice.created_at, `Invoice ${labelize(invoice.payment_status || invoice.status || 'updated')}`, invoice.invoice_number || invoice.title))
+
+  return events.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime()).slice(0, 60)
+}
+
+function ProjectActivityItem({ item }) {
+  return (
+    <article className="project-activity-item">
+      <span>{timelineTime(item.at) || shortDate(item.at)}</span>
+      <div>
+        <strong>{item.title}</strong>
+        {item.detail && <small>{item.detail}</small>}
+      </div>
+    </article>
+  )
+}
+
+function closeoutReached(status, checkpoint) {
+  const order = ['active', 'practical_completion', 'defects_liability', 'final_completion', 'completed', 'closed']
+  const currentIndex = order.indexOf(status)
+  const checkpointIndex = order.indexOf(checkpoint)
+
+  return currentIndex >= 0 && checkpointIndex >= 0 && currentIndex >= checkpointIndex
 }
 
 function ProcurementView({
@@ -9444,7 +10780,7 @@ function FieldOpsView({
           status: form.status || 'open',
           due_date: form.due_date || null,
         }),
-      'Field issue updated.',
+      'Site issue updated.',
     ).then(() => {
       setEditingIssueId(null)
       setFieldForms((current) => ({ ...current, issue: emptyFieldForms.issue }))
@@ -9473,11 +10809,11 @@ function FieldOpsView({
   }
 
   function archiveFieldIssue(issue) {
-    if (!window.confirm(`Archive field issue ${issue.title}?`)) {
+    if (!window.confirm(`Archive site issue ${issue.title}?`)) {
       return
     }
 
-    runAction(() => api.deleteFieldIssue(issue.id), 'Field issue archived.').then(() => {
+    runAction(() => api.deleteFieldIssue(issue.id), 'Site issue archived.').then(() => {
       if (editingIssueId === issue.id) {
         cancelFieldIssueEdit()
       }
@@ -9488,7 +10824,7 @@ function FieldOpsView({
     <section className="view-stack">
       <div className="kpi-grid">
         <Kpi icon={ClipboardList} label="Daily reports" value={fieldOps.daily_reports?.length || 0} sub="Recent reports" />
-        <Kpi icon={AlertTriangle} label="Open issues" value={(fieldOps.issues || []).filter((issue) => !['resolved', 'closed'].includes(issue.status)).length} sub="Field blockers" />
+        <Kpi icon={AlertTriangle} label="Open issues" value={(fieldOps.issues || []).filter((issue) => !['resolved', 'closed'].includes(issue.status)).length} sub="Site blockers" />
         <Kpi icon={Clock3} label="Clocked in" value={(fieldOps.attendance || []).filter((item) => item.status === 'open').length} sub="Open attendance" />
         <Kpi icon={MapPinned} label="Site mode" value="Web" sub="Responsive browser app" />
       </div>
@@ -9603,9 +10939,9 @@ function FieldOpsView({
       </section>
 
       <section className="panel">
-        <PanelTitle icon={MapPinned} title="Recent Field Records" />
+        <PanelTitle icon={MapPinned} title="Recent Site Records" />
         <div className="panel-toolbar">
-          <DownloadButton filename="field-daily-reports.csv" columns={dailyReportColumns} rows={dailyReportRows} />
+          <DownloadButton filename="site-management-daily-reports.csv" columns={dailyReportColumns} rows={dailyReportRows} />
         </div>
         <DataTable
           columns={['Project', 'Report date', 'Status', 'Labour', 'Weather', 'Action']}
@@ -10345,7 +11681,7 @@ function FinanceView({
 function PeopleView({ branches, projects, suppliers, users, roles, currentUser, people, forms, setPeopleForm, setPeopleForms, createEmployee, createLeaveRequest, createPayrollRun, runAction }) {
   const [activeTab, setActiveTab] = useState('dashboard')
   const [accessForms, setAccessForms] = useState({
-    user: { id: '', name: '', email: '', password: '', branch_id: '', role_id: '', permissions: [], status: 'active' },
+    user: { id: '', name: '', email: '', password: '', branch_id: '', role_id: '', role_name: '', permissions: [], status: 'active' },
     role: { id: '', name: '', permissions: [] },
   })
   const recruitment = people.recruitment || {}
@@ -10415,8 +11751,9 @@ function PeopleView({ branches, projects, suppliers, users, roles, currentUser, 
     email: '',
     password: '',
     branch_id: branches[0]?.id || '',
-    role_id: roles[0]?.id || '',
-    permissions: rolePermissions(roles[0]),
+    role_id: '',
+    role_name: '',
+    permissions: [],
     status: 'active',
   })
   const hrRoleReset = { id: '', name: '', permissions: [] }
@@ -10461,27 +11798,20 @@ function PeopleView({ branches, projects, suppliers, users, roles, currentUser, 
 
   useEffect(() => {
     const defaultBranchId = branches[0]?.id || ''
-    const defaultRole = roles[0]
 
     setAccessForms((current) => {
       const nextUser = {
         ...current.user,
         branch_id: current.user.branch_id || defaultBranchId,
-        role_id: current.user.role_id || defaultRole?.id || '',
-        permissions: current.user.permissions.length > 0 ? current.user.permissions : rolePermissions(defaultRole),
       }
 
-      if (
-        nextUser.branch_id === current.user.branch_id &&
-        nextUser.role_id === current.user.role_id &&
-        nextUser.permissions === current.user.permissions
-      ) {
+      if (nextUser.branch_id === current.user.branch_id) {
         return current
       }
 
       return { ...current, user: nextUser }
     })
-  }, [branches, roles])
+  }, [branches])
 
   function setAccessFormValue(section) {
     return (event) => {
@@ -10493,18 +11823,13 @@ function PeopleView({ branches, projects, suppliers, users, roles, currentUser, 
     }
   }
 
-  function setHrUserRole(event) {
-    const { value } = event.target
-    const role = roles.find((item) => String(item.id) === String(value))
-
-    setAccessForms((current) => ({
-      ...current,
-      user: {
-        ...current.user,
-        role_id: value,
-        permissions: rolePermissions(role),
-      },
-    }))
+  function setAccessUserField(field) {
+    return (event) => {
+      setAccessForms((current) => ({
+        ...current,
+        user: { ...current.user, [field]: event.target.value },
+      }))
+    }
   }
 
   function toggleAccessCategoryFor(section, category) {
@@ -10546,7 +11871,8 @@ function PeopleView({ branches, projects, suppliers, users, roles, currentUser, 
         email: item.email || '',
         password: '',
         branch_id: item.branch_id || item.branch?.id || branches[0]?.id || '',
-        role_id: item.role_id || item.role?.id || roles[0]?.id || '',
+        role_id: item.role_id || item.role?.id || '',
+        role_name: item.role?.name || '',
         permissions: explicitUserPermissions(item),
         status: item.status || 'active',
       },
@@ -10560,7 +11886,7 @@ function PeopleView({ branches, projects, suppliers, users, roles, currentUser, 
       name: accessForms.user.name,
       email: accessForms.user.email,
       branch_id: Number(accessForms.user.branch_id),
-      role_id: Number(accessForms.user.role_id),
+      role_name: (accessForms.user.role_name || '').trim(),
       permissions: hrUserPermissions,
       status: accessForms.user.status || 'active',
     }
@@ -11613,20 +12939,14 @@ function PeopleView({ branches, projects, suppliers, users, roles, currentUser, 
 
             <section className="panel">
               <PanelTitle icon={Users} title="Users & Roles" />
-              <form className="form-grid user-form" onSubmit={saveHrUser}>
+              <form className="form-grid user-form" onSubmit={saveHrUser} autoComplete="off">
                 <Field label="Name" name="name" value={accessForms.user.name} onChange={setAccessFormValue('user')} required />
-                <Field label="Email" type="email" name="email" value={accessForms.user.email} onChange={setAccessFormValue('user')} required />
-                <Field label="Password" type="password" name="password" value={accessForms.user.password} onChange={setAccessFormValue('user')} required={!isEditingHrUser} placeholder={isEditingHrUser ? 'Leave blank to keep current' : 'Enter a secure temporary password'} />
+                <Field label="Email" type="email" name="company_user_invite_email" value={accessForms.user.email} onChange={setAccessUserField('email')} autoComplete="new-password" data-1p-ignore="true" data-lpignore="true" required />
+                <Field label="Password" type="password" name="company_user_temporary_password" value={accessForms.user.password} onChange={setAccessUserField('password')} autoComplete="new-password" data-1p-ignore="true" data-lpignore="true" required={!isEditingHrUser} placeholder={isEditingHrUser ? 'Leave blank to keep current' : 'Enter a secure temporary password'} />
                 <Select label="Branch" name="branch_id" value={accessForms.user.branch_id} onChange={setAccessFormValue('user')}>
                   {branchOptions()}
                 </Select>
-                <Select label="Role" name="role_id" value={accessForms.user.role_id} onChange={setHrUserRole}>
-                  {roles.map((role) => (
-                    <option key={role.id} value={role.id}>
-                      {roleLabel(role)}
-                    </option>
-                  ))}
-                </Select>
+                <Field label="Role" name="role_name" value={accessForms.user.role_name} onChange={setAccessFormValue('user')} placeholder="Type this company user's role" required />
                 <Select label="Status" name="status" value={accessForms.user.status} onChange={setAccessFormValue('user')}>
                   <option value="active">Active</option>
                   <option value="inactive">Inactive</option>
@@ -13996,8 +15316,8 @@ function ReportsView({ reports, dashboard }) {
     ...groupedRows('Tenders', sales.tenders),
     ...groupedRows('Estimates', sales.estimates),
     ...groupedRows('Daily reports', field.daily_reports),
-    ...groupedRows('Field issues', field.issues),
-    ['Field attendance', 'Open clock-ins', field.attendance_open || 0, ''],
+    ...groupedRows('Site issues', field.issues),
+    ['Site attendance', 'Open clock-ins', field.attendance_open || 0, ''],
     ['Inventory', 'Items', inventory.items || 0, ''],
     ['Inventory', 'Reorder alerts', (inventory.reorder_alerts || []).length, ''],
     ...groupedRows('Invoices', finance.invoices),
@@ -15847,7 +17167,7 @@ function AdminView({
   const isEditingUser = Boolean(forms.user.id)
   const clientReset = { id: '', name: '', contact_name: '', email: '', phone: '', status: 'active' }
   const supplierReset = { id: '', name: '', contact_name: '', email: '', phone: '', rating: 4, lead_time_days: 7, status: 'active' }
-  const userReset = { id: '', name: '', email: '', password: '', branch_id: branches[0]?.id || '', role_id: roles[0]?.id || '', permissions: rolePermissions(roles[0]), status: 'active' }
+  const userReset = { id: '', name: '', email: '', password: '', branch_id: branches[0]?.id || '', role_id: '', role_name: '', permissions: [], status: 'active' }
   const userPermissions = normalizePermissionList(forms.user.permissions)
   const companySettings = forms.company.settings || company?.settings || {}
   const approvalItems = approvals?.items || []
@@ -15902,25 +17222,21 @@ function AdminView({
         email: item.email || '',
         password: '',
         branch_id: item.branch_id || item.branch?.id || branches[0]?.id || '',
-        role_id: item.role_id || item.role?.id || roles[0]?.id || '',
+        role_id: item.role_id || item.role?.id || '',
+        role_name: item.role?.name || '',
         permissions: explicitUserPermissions(item),
         status: item.status || 'active',
       },
     }))
   }
 
-  function setUserRole(event) {
-    const { value } = event.target
-    const role = roles.find((item) => String(item.id) === String(value))
-
-    setForms((current) => ({
-      ...current,
-      user: {
-        ...current.user,
-        role_id: value,
-        permissions: rolePermissions(role),
-      },
-    }))
+  function setUserFormField(field) {
+    return (event) => {
+      setForms((current) => ({
+        ...current,
+        user: { ...current.user, [field]: event.target.value },
+      }))
+    }
   }
 
   function toggleAccessCategory(category) {
@@ -16061,7 +17377,7 @@ function AdminView({
       name: forms.user.name,
       email: forms.user.email,
       branch_id: Number(forms.user.branch_id),
-      role_id: Number(forms.user.role_id),
+      role_name: (forms.user.role_name || '').trim(),
       permissions: userPermissions,
       status: forms.user.status || 'active',
     }
@@ -16305,10 +17621,11 @@ function AdminView({
         <form
           className="form-grid user-form"
           onSubmit={saveUser}
+          autoComplete="off"
         >
           <Field label="Name" name="name" value={forms.user.name} onChange={setAdminFormValue('user')} required />
-          <Field label="Email" type="email" name="email" value={forms.user.email} onChange={setAdminFormValue('user')} required />
-          <Field label="Password" type="password" name="password" value={forms.user.password} onChange={setAdminFormValue('user')} required={!isEditingUser} placeholder={isEditingUser ? 'Leave blank to keep current' : 'Enter a secure temporary password'} />
+          <Field label="Email" type="email" name="company_user_invite_email" value={forms.user.email} onChange={setUserFormField('email')} autoComplete="new-password" data-1p-ignore="true" data-lpignore="true" required />
+          <Field label="Password" type="password" name="company_user_temporary_password" value={forms.user.password} onChange={setUserFormField('password')} autoComplete="new-password" data-1p-ignore="true" data-lpignore="true" required={!isEditingUser} placeholder={isEditingUser ? 'Leave blank to keep current' : 'Enter a secure temporary password'} />
           <Select label="Branch" name="branch_id" value={forms.user.branch_id} onChange={setAdminFormValue('user')}>
             {branches.map((branch) => (
               <option key={branch.id} value={branch.id}>
@@ -16316,13 +17633,7 @@ function AdminView({
               </option>
             ))}
           </Select>
-          <Select label="Role" name="role_id" value={forms.user.role_id} onChange={setUserRole}>
-            {roles.map((role) => (
-              <option key={role.id} value={role.id}>
-                {roleLabel(role)}
-              </option>
-            ))}
-          </Select>
+          <Field label="Role" name="role_name" value={forms.user.role_name} onChange={setAdminFormValue('user')} placeholder="Type this company user's role" required />
           <Select label="Status" name="status" value={forms.user.status} onChange={setAdminFormValue('user')}>
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
@@ -16407,6 +17718,81 @@ function Select({ label, className = '', children, ...props }) {
       <span>{label}</span>
       <select {...props}>{children}</select>
     </label>
+  )
+}
+
+function PickerField({ label, name, value, options = [], onChange, className = '', placeholder = 'Select', searchPlaceholder = 'Search' }) {
+  const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const wrapperRef = useRef(null)
+  const selected = options.find((option) => String(option.value) === String(value))
+  const filteredOptions = options.filter((option) => {
+    const searchText = `${option.label} ${option.meta || ''}`.toLowerCase()
+    return searchText.includes(query.trim().toLowerCase())
+  })
+
+  useEffect(() => {
+    if (!open) return undefined
+
+    const closeOnOutsideClick = (event) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
+        setOpen(false)
+        setQuery('')
+      }
+    }
+
+    document.addEventListener('pointerdown', closeOnOutsideClick)
+    return () => document.removeEventListener('pointerdown', closeOnOutsideClick)
+  }, [open])
+
+  function choose(nextValue) {
+    onChange?.({ target: { name, value: nextValue } })
+    setOpen(false)
+    setQuery('')
+  }
+
+  return (
+    <div ref={wrapperRef} className={`field picker-field ${open ? 'open' : ''} ${className}`}>
+      <span>{label}</span>
+      <button type="button" className="picker-trigger" onClick={() => setOpen((current) => !current)} aria-haspopup="listbox" aria-expanded={open}>
+        <strong>{selected?.label || placeholder}</strong>
+        {selected?.meta && <small>{selected.meta}</small>}
+        <ChevronRight className="picker-arrow" size={16} />
+      </button>
+
+      {open && (
+        <div className="picker-popover">
+          <input
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') {
+                setOpen(false)
+                setQuery('')
+              }
+              if (event.key === 'Enter' && filteredOptions[0]) {
+                event.preventDefault()
+                choose(filteredOptions[0].value)
+              }
+            }}
+            placeholder={searchPlaceholder}
+            autoComplete="off"
+            autoFocus
+          />
+          <div className="picker-options" role="listbox">
+            {filteredOptions.length > 0 ? filteredOptions.map((option) => (
+              <button key={option.value} type="button" className={String(option.value) === String(value) ? 'selected' : ''} onClick={() => choose(option.value)} role="option" aria-selected={String(option.value) === String(value)}>
+                <span>{option.label}</span>
+                {option.meta && <small>{option.meta}</small>}
+              </button>
+            )) : (
+              <div className="picker-empty">No matches</div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -16704,8 +18090,19 @@ function labelize(value = '') {
   return String(value).replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase())
 }
 
+function countryName(code = '') {
+  return africanCountryNames[code] || code
+}
+
+function currencyName(code = '') {
+  return africanCurrencyNames[code] || code
+}
+
 function moduleLabel(value = '') {
-  return ['staff', 'people', 'hr'].includes(String(value).toLowerCase()) ? 'HR & Workforce' : labelize(value)
+  const module = String(value).toLowerCase()
+  if (['staff', 'people', 'hr'].includes(module)) return 'HR & Workforce'
+  if (module === 'field') return 'Site Management'
+  return labelize(value)
 }
 
 function roleLabel(role) {

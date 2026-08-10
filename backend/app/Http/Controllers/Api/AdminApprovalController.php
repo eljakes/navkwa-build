@@ -215,7 +215,7 @@ class AdminApprovalController extends ApiController
             ->limit(80)
             ->get()
             ->map(fn (FieldDailyReport $report): array => $this->approvalItem('daily_report', $report->id, [
-                'module' => 'Field',
+                'module' => 'Site Management',
                 'reference' => $report->report_number,
                 'title' => 'Daily report',
                 'status' => 'Submitted',

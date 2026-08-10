@@ -937,6 +937,10 @@ export const api = {
     request(`/platform-admin/companies/${companyId}/restore`, {
       method: 'POST',
     }),
+  deleteArchivedPlatformCompany: (companyId) =>
+    request(`/platform-admin/companies/${companyId}/permanent`, {
+      method: 'DELETE',
+    }),
   updatePlatformCompanyFeature: (companyId, flagId, payload) =>
     request(`/platform-admin/companies/${companyId}/features/${flagId}`, {
       method: 'PATCH',

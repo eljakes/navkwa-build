@@ -723,13 +723,32 @@ class NavkwaBuildPhaseThreeApiTest extends TestCase
             'email' => fake()->unique()->safeEmail(),
             'password' => 'TempPass2026',
             'branch_id' => $branch->id,
-            'role_id' => $roleId,
+            'role_name' => 'Site Attendance Officer',
             'permissions' => ['payroll.manage', 'attendance.manage'],
             'status' => 'active',
         ])
             ->assertCreated()
             ->assertJsonPath('user.role.slug', 'site-attendance-officer')
             ->json('user.id');
+
+        $customUserId = $this->postJson('/api/v1/organization/users', [
+            'name' => 'Night Shift Supervisor',
+            'email' => fake()->unique()->safeEmail(),
+            'password' => 'TempPass2026',
+            'branch_id' => $branch->id,
+            'role_name' => 'Night Shift Supervisor',
+            'permissions' => ['payroll.manage', 'attendance.manage'],
+            'status' => 'active',
+        ])
+            ->assertCreated()
+            ->assertJsonPath('user.role.name', 'Night Shift Supervisor')
+            ->assertJsonPath('user.role.slug', 'night-shift-supervisor')
+            ->json('user.id');
+
+        $customRoleId = Role::query()
+            ->where('company_id', $admin->company_id)
+            ->where('slug', 'night-shift-supervisor')
+            ->value('id');
 
         $this->patchJson("/api/v1/organization/users/{$newUserId}", [
             'status' => 'suspended',
@@ -743,12 +762,22 @@ class NavkwaBuildPhaseThreeApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('message', 'User deleted.');
 
+        $this->deleteJson("/api/v1/organization/users/{$customUserId}")
+            ->assertOk()
+            ->assertJsonPath('message', 'User deleted.');
+
         $this->deleteJson("/api/v1/organization/roles/{$roleId}")
             ->assertOk()
             ->assertJsonPath('message', 'Role deleted.');
 
+        $this->deleteJson("/api/v1/organization/roles/{$customRoleId}")
+            ->assertOk()
+            ->assertJsonPath('message', 'Role deleted.');
+
         $this->assertDatabaseMissing('roles', ['id' => $roleId]);
+        $this->assertDatabaseMissing('roles', ['id' => $customRoleId]);
         $this->assertDatabaseMissing('users', ['id' => $newUserId]);
+        $this->assertDatabaseMissing('users', ['id' => $customUserId]);
     }
 
     public function test_equipment_assignment_maintenance_and_fuel_work(): void

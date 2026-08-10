@@ -126,8 +126,8 @@ class PlatformAdminController extends ApiController
             'catalog' => [
                 'console_layers' => $this->consoleLayers(),
                 'modules' => $this->moduleCatalog(),
-                'countries' => ['GH', 'NG', 'KE', 'ZA', 'RW', 'UG', 'TZ', 'CI', 'SN'],
-                'currencies' => ['GHS', 'NGN', 'KES', 'ZAR', 'RWF', 'UGX', 'TZS', 'USD'],
+                'countries' => $this->africanCountryCodes(),
+                'currencies' => $this->africanCurrencyCodes(),
                 'plans' => $plans->map(fn (PlatformSubscriptionPlan $plan): array => ['id' => $plan->id, 'name' => $plan->name, 'code' => $plan->code])->values(),
                 'statuses' => ['trial', 'active', 'past_due', 'suspended', 'cancelled', 'inactive'],
                 'plan_statuses' => ['active', 'inactive', 'archived'],
@@ -433,6 +433,48 @@ class PlatformAdminController extends ApiController
         $this->audit($request, 'platform.company.restored', $fresh, $before, $fresh->toArray());
 
         return response()->json(['company' => $this->companyPayload($fresh)]);
+    }
+
+    public function permanentlyDeleteCompany(Request $request, int $companyId): JsonResponse
+    {
+        $company = Company::onlyTrashed()->whereKey($companyId)->firstOrFail();
+        $platformCompany = $this->platformCompany($request);
+
+        abort_if(
+            (int) $company->id === (int) $platformCompany->id || $company->tenant_key === $platformCompany->tenant_key,
+            422,
+            'The Navkwa Build Cloud Console tenant cannot be permanently deleted from customer account management.',
+        );
+
+        $before = $company->toArray();
+        $tenantKey = $company->tenant_key;
+
+        DB::transaction(function () use ($company): void {
+            User::query()
+                ->where('company_id', $company->id)
+                ->get()
+                ->each(function (User $user): void {
+                    $user->tokens()->delete();
+                    $user->delete();
+                });
+
+            $company->forceDelete();
+        });
+
+        $tenantStorageDeleted = filled($tenantKey)
+            ? Storage::disk('local')->deleteDirectory("tenants/{$tenantKey}")
+            : false;
+        $companyStorageDeleted = Storage::disk('local')->deleteDirectory("navkwabuild/companies/{$companyId}");
+
+        $this->audit($request, 'platform.company.permanently_deleted', 'platform', $before, [
+            'deleted_company_id' => $companyId,
+            'name' => $before['name'] ?? null,
+            'tenant_key' => $tenantKey,
+            'tenant_storage_deleted' => $tenantStorageDeleted,
+            'company_storage_deleted' => $companyStorageDeleted,
+        ]);
+
+        return response()->json(['message' => 'Company permanently deleted.']);
     }
 
     public function storePlan(Request $request): JsonResponse
@@ -1662,6 +1704,25 @@ class PlatformAdminController extends ApiController
         return DB::table($table)->count();
     }
 
+    private function africanCountryCodes(): array
+    {
+        return [
+            'DZ', 'AO', 'BJ', 'BW', 'BF', 'BI', 'CV', 'CM', 'CF', 'TD', 'KM', 'CG', 'CD', 'CI', 'DJ', 'EG', 'GQ', 'ER',
+            'SZ', 'ET', 'GA', 'GM', 'GH', 'GN', 'GW', 'KE', 'LS', 'LR', 'LY', 'MG', 'MW', 'ML', 'MR', 'MU', 'MA', 'MZ',
+            'NA', 'NE', 'NG', 'RW', 'ST', 'SN', 'SC', 'SL', 'SO', 'ZA', 'SS', 'SD', 'TZ', 'TG', 'TN', 'UG', 'ZM', 'ZW',
+            'EH',
+        ];
+    }
+
+    private function africanCurrencyCodes(): array
+    {
+        return [
+            'DZD', 'AOA', 'XOF', 'BWP', 'BIF', 'CVE', 'XAF', 'KMF', 'CDF', 'DJF', 'EGP', 'ERN', 'SZL', 'ETB', 'GMD',
+            'GHS', 'GNF', 'KES', 'LSL', 'LRD', 'LYD', 'MGA', 'MWK', 'MRU', 'MUR', 'MAD', 'MZN', 'NAD', 'NGN', 'RWF',
+            'STN', 'SCR', 'SLE', 'SOS', 'ZAR', 'SSP', 'SDG', 'TZS', 'TND', 'UGX', 'ZMW', 'ZWL', 'USD',
+        ];
+    }
+
     private function platformStaff(Request $request): array
     {
         return User::query()
@@ -2370,7 +2431,7 @@ class PlatformAdminController extends ApiController
             ['id' => 'tendering', 'label' => 'Tendering', 'flag_key' => 'module.tendering'],
             ['id' => 'estimating', 'label' => 'Estimating', 'flag_key' => 'module.estimating'],
             ['id' => 'inventory', 'label' => 'Inventory', 'flag_key' => 'module.inventory'],
-            ['id' => 'field', 'label' => 'Field & Attendance', 'flag_key' => 'module.field'],
+            ['id' => 'field', 'label' => 'Site Management & Attendance', 'flag_key' => 'module.field'],
             ['id' => 'equipment', 'label' => 'Equipment', 'flag_key' => 'module.equipment'],
             ['id' => 'qa_hse', 'label' => 'QA/HSE', 'flag_key' => 'module.qa_hse'],
             ['id' => 'portals', 'label' => 'Portals', 'flag_key' => 'module.portals'],
