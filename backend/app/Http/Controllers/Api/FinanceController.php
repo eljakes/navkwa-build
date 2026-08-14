@@ -6,6 +6,7 @@ use App\Models\AuditLog;
 use App\Models\Branch;
 use App\Models\BudgetLine;
 use App\Models\Client;
+use App\Models\Document;
 use App\Models\EquipmentAsset;
 use App\Models\Expense;
 use App\Models\FinanceAccount;
@@ -38,6 +39,8 @@ use Illuminate\Validation\Rule;
 
 class FinanceController extends ApiController
 {
+    private const FINANCE_WORKBOOK_EXTENSIONS = 'xls,xlsx,xlsm,csv';
+
     public function index(Request $request): JsonResponse
     {
         $companyId = $this->companyId($request);
@@ -169,6 +172,13 @@ class FinanceController extends ApiController
             'cash_flow' => $this->cashFlow($companyId),
             'bank_accounts' => FinanceBankAccount::query()->forCompany($companyId)->with('branch:id,name')->orderByDesc('is_default')->orderBy('account_name')->get(),
             'bank_reconciliations' => FinanceBankReconciliation::query()->forCompany($companyId)->with('bankAccount:id,account_name,bank_name')->latest('statement_date')->limit(80)->get(),
+            'workbooks' => Document::query()
+                ->forCompany($companyId)
+                ->with(['branch:id,name,code', 'project:id,code,name'])
+                ->where('document_type', 'finance_workbook')
+                ->latest()
+                ->limit(80)
+                ->get(),
             'chart_of_accounts' => $this->chartOfAccounts($companyId),
             'general_ledger' => $this->generalLedger($companyId),
             'cost_centers' => FinanceCostCenter::query()->forCompany($companyId)->with('project:id,code,name')->orderBy('code')->get(),
@@ -651,6 +661,61 @@ class FinanceController extends ApiController
         ]);
 
         return response()->json(['bank_reconciliation' => $reconciliation->load('bankAccount')], 201);
+    }
+
+    public function storeWorkbook(Request $request): JsonResponse
+    {
+        $companyId = $this->companyId($request);
+
+        $data = $request->validate([
+            'branch_id' => ['nullable', 'integer'],
+            'project_id' => ['nullable', 'integer'],
+            'title' => ['required', 'string', 'max:255'],
+            'workbook_type' => ['nullable', Rule::in(['bank_statement', 'invoice_import', 'expense_import', 'budget_import', 'journal_import', 'payroll_import', 'general_finance'])],
+            'folder' => ['nullable', 'string', 'max:255'],
+            'description' => ['nullable', 'string', 'max:4000'],
+            'file' => ['required', 'file', 'max:51200', 'extensions:'.self::FINANCE_WORKBOOK_EXTENSIONS],
+        ]);
+
+        $branchId = $data['branch_id'] ?? $this->user($request)->branch_id;
+        $projectId = $data['project_id'] ?? null;
+
+        if ($projectId) {
+            $project = Project::query()->forCompany($companyId)->whereKey($projectId)->firstOrFail();
+            $branchId = $project->branch_id;
+        } elseif ($branchId) {
+            Branch::query()->forCompany($companyId)->whereKey($branchId)->firstOrFail();
+        }
+
+        $workbookType = $data['workbook_type'] ?? 'general_finance';
+        $file = $request->file('file');
+        $path = $file->store("navkwabuild/companies/{$companyId}/branches/".($branchId ?: 'company').'/finance/'.($projectId ?: 'shared'), 'local');
+
+        $workbook = Document::query()->create([
+            'company_id' => $companyId,
+            'branch_id' => $branchId,
+            'project_id' => $projectId,
+            'uploaded_by' => $this->user($request)->id,
+            'document_number' => $this->nextNumber('DOC', Document::class, 'document_number', $companyId),
+            'title' => $data['title'],
+            'document_type' => 'finance_workbook',
+            'repository_scope' => $projectId ? 'project' : ($branchId ? 'branch' : 'company'),
+            'folder' => $data['folder'] ?? 'Finance / '.ucwords(str_replace('_', ' ', $workbookType)),
+            'version' => 1,
+            'file_path' => $path,
+            'original_filename' => $file->getClientOriginalName(),
+            'mime_type' => $file->getClientMimeType(),
+            'size_bytes' => $file->getSize(),
+            'tags' => ['finance', $workbookType, strtolower($file->getClientOriginalExtension())],
+            'description' => $data['description'] ?? null,
+        ]);
+
+        $this->publishAutomationEvent($request, 'document_uploaded', [
+            'record_type' => 'finance_workbook',
+            'record_id' => $workbook->id,
+        ]);
+
+        return response()->json(['workbook' => $workbook->load(['branch', 'project'])], 201);
     }
 
     public function storeCreditNote(Request $request): JsonResponse

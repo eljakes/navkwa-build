@@ -115,6 +115,7 @@ class OrganizationController extends ApiController
             'company_id' => $companyId,
             ...$data,
             'password_changed_at' => now(),
+            'must_change_password' => true,
             'permissions' => array_key_exists('permissions', $data) ? $this->normalizePermissions($data['permissions']) : null,
         ]);
 
@@ -218,7 +219,10 @@ class OrganizationController extends ApiController
         $user->update($data);
 
         if ($passwordChanged) {
-            $user->forceFill(['password_changed_at' => now()])->save();
+            $user->forceFill([
+                'password_changed_at' => now(),
+                'must_change_password' => true,
+            ])->save();
             $user->tokens()->delete();
         }
 
@@ -231,7 +235,7 @@ class OrganizationController extends ApiController
 
     private function passwordRule(): Password
     {
-        return Password::min(12)->letters()->mixedCase()->numbers();
+        return Password::min(14)->letters()->mixedCase()->numbers()->symbols();
     }
 
     private function normalizePermissions(?array $permissions): ?array

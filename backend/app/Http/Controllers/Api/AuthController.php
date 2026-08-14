@@ -93,7 +93,7 @@ class AuthController extends ApiController
             'email' => ['required', 'email'],
             'password' => ['required', 'string'],
         ]);
-        $email = strtolower($data['email']);
+        $email = strtolower(trim($data['email']));
 
         $user = User::query()
             ->with(['company', 'branch', 'role'])
@@ -115,15 +115,11 @@ class AuthController extends ApiController
             ]);
         }
 
-        if ($user->status !== 'active') {
-            throw ValidationException::withMessages([
-                'email' => ['This user account is not active.'],
-            ]);
-        }
+        $this->ensureUserCanSignIn($user);
 
-        if (! $user->company || in_array($user->company->status, ['inactive', 'suspended', 'cancelled', 'archived'], true)) {
+        if ($this->requiresPlatformMfa($user) && ! $this->mfaIsEnabled($user)) {
             throw ValidationException::withMessages([
-                'email' => ['This company account is not active.'],
+                'email' => ['Multi-factor authentication is required for Navkwa Build Cloud Console administrators before sign in is allowed.'],
             ]);
         }
 
@@ -183,6 +179,16 @@ class AuthController extends ApiController
         }
         $this->ensureUserCanSignIn($user);
 
+        if (! hash_equals((string) ($challenge['ip_address'] ?? ''), (string) $request->ip())
+            || ! hash_equals((string) ($challenge['user_agent'] ?? ''), (string) $request->userAgent())) {
+            Cache::forget($cacheKey);
+            $this->recordFailedLogin($request, $user, 'mfa_context_changed');
+
+            throw ValidationException::withMessages([
+                'mfa_code' => ['This multi-factor challenge could not be verified. Sign in again.'],
+            ]);
+        }
+
         $valid = filled($data['mfa_code'] ?? null)
             ? $mfaService->verifyCode($user->mfa_secret, $data['mfa_code'])
             : $mfaService->consumeRecoveryCode($user, $data['recovery_code'] ?? null);
@@ -216,6 +222,37 @@ class AuthController extends ApiController
         $request->user()?->currentAccessToken()?->delete();
 
         return response()->json(['message' => 'Signed out.']);
+    }
+
+    public function changePassword(Request $request): JsonResponse
+    {
+        $user = $this->user($request);
+        $data = $request->validate([
+            'current_password' => ['required', 'string'],
+            'password' => ['required', 'confirmed', $this->passwordRule()],
+        ]);
+
+        $this->assertCurrentPassword($user, $data['current_password']);
+        if (Hash::check($data['password'], $user->password)) {
+            throw ValidationException::withMessages([
+                'password' => ['Choose a new password that is different from your current password.'],
+            ]);
+        }
+
+        $user->forceFill([
+            'password' => $data['password'],
+            'password_changed_at' => now(),
+            'must_change_password' => false,
+            'failed_login_attempts' => 0,
+            'locked_until' => null,
+        ])->save();
+
+        $this->revokeOtherTokens($request, $user);
+        $this->recordSecurityEvent($request, $user, 'password_changed', 'medium', 'resolved', 'A user changed their password.');
+
+        return response()->json([
+            'user' => $this->userPayload($user->fresh(['company.branches', 'branch', 'role'])),
+        ]);
     }
 
     public function mfaStatus(Request $request): JsonResponse
@@ -377,29 +414,42 @@ class AuthController extends ApiController
             'mfa_enabled' => $this->mfaIsEnabled($user),
             'mfa_enabled_at' => $user->mfa_enabled_at?->toISOString(),
             'locked_until' => $user->locked_until?->toISOString(),
+            'password_changed_at' => $user->password_changed_at?->toISOString(),
+            'must_change_password' => (bool) $user->must_change_password,
+            'platform_mfa_required' => $this->requiresPlatformMfa($user),
         ];
     }
 
     private function passwordRule(): Password
     {
-        return Password::min(12)->letters()->mixedCase()->numbers();
+        return Password::min(14)->letters()->mixedCase()->numbers()->symbols();
     }
 
     private function tokenExpiresAt(): ?Carbon
     {
-        $minutes = (int) config('security.tokens.web_token_lifetime_minutes', 720);
+        $minutes = (int) config('security.tokens.web_token_lifetime_minutes', 240);
 
         return $minutes > 0 ? now()->addMinutes($minutes) : null;
     }
 
     private function issueWebToken(User $user): string
     {
+        if ((bool) config('security.auth.revoke_other_web_tokens_on_login', true)) {
+            $this->revokeWebTokens($user);
+        }
+
         return $user->createToken('navkwabuild-web', ['*'], $this->tokenExpiresAt())->plainTextToken;
     }
 
     private function mfaIsEnabled(User $user): bool
     {
         return filled($user->mfa_secret) && filled($user->mfa_enabled_at);
+    }
+
+    private function requiresPlatformMfa(User $user): bool
+    {
+        return (bool) config('security.auth.require_mfa_for_platform_admins', false)
+            && $user->hasPermission('platform.manage');
     }
 
     private function createMfaChallenge(User $user, Request $request): array
@@ -507,6 +557,11 @@ class AuthController extends ApiController
         }
 
         $query->delete();
+    }
+
+    private function revokeWebTokens(User $user): void
+    {
+        $user->tokens()->where('name', 'navkwabuild-web')->delete();
     }
 
     private function mfaPayload(User $user): array

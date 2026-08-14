@@ -12,6 +12,26 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class DocumentController extends ApiController
 {
+    private const DOCUMENT_TYPES = [
+        'general',
+        'contract',
+        'invoice',
+        'photo',
+        'video',
+        'correspondence',
+        'hr',
+        'policy',
+        'quality',
+        'safety',
+        'microsoft_excel',
+        'autocad',
+        'pdf_drawing',
+        'csv_import',
+        'finance_workbook',
+    ];
+
+    private const DOCUMENT_FILE_EXTENSIONS = 'pdf,doc,docx,xls,xlsx,xlsm,csv,dwg,dxf,jpg,jpeg,png,webp';
+
     public function index(Request $request): JsonResponse
     {
         $documents = Document::query()
@@ -42,12 +62,12 @@ class DocumentController extends ApiController
             'branch_id' => ['nullable', 'integer'],
             'project_id' => ['nullable', 'integer'],
             'title' => ['required', 'string', 'max:255'],
-            'document_type' => ['nullable', Rule::in(['general', 'contract', 'invoice', 'photo', 'video', 'correspondence', 'hr', 'policy', 'quality', 'safety'])],
+            'document_type' => ['nullable', Rule::in(self::DOCUMENT_TYPES)],
             'repository_scope' => ['nullable', Rule::in(['company', 'branch', 'project'])],
             'folder' => ['nullable', 'string', 'max:255'],
             'tags' => ['nullable', 'array'],
             'description' => ['nullable', 'string', 'max:4000'],
-            'file' => ['nullable', 'file', 'max:51200'],
+            'file' => ['nullable', 'file', 'max:51200', 'extensions:'.self::DOCUMENT_FILE_EXTENSIONS],
         ]);
 
         $branchId = $data['branch_id'] ?? $this->user($request)->branch_id;
@@ -94,13 +114,13 @@ class DocumentController extends ApiController
 
         $data = $request->validate([
             'title' => ['sometimes', 'string', 'max:255'],
-            'document_type' => ['sometimes', Rule::in(['general', 'contract', 'invoice', 'photo', 'video', 'correspondence', 'hr', 'policy', 'quality', 'safety'])],
+            'document_type' => ['sometimes', Rule::in(self::DOCUMENT_TYPES)],
             'repository_scope' => ['sometimes', Rule::in(['company', 'branch', 'project'])],
             'folder' => ['nullable', 'string', 'max:255'],
             'status' => ['sometimes', Rule::in(['active', 'under_review', 'approved', 'archived'])],
             'tags' => ['nullable', 'array'],
             'description' => ['nullable', 'string', 'max:4000'],
-            'file' => ['nullable', 'file', 'max:51200'],
+            'file' => ['nullable', 'file', 'max:51200', 'extensions:'.self::DOCUMENT_FILE_EXTENSIONS],
         ]);
 
         $filePayload = [];

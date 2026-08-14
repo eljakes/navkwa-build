@@ -1,18 +1,39 @@
 const configuredApiBase = import.meta.env.VITE_API_URL || '/api/v1'
 const API_BASE = configuredApiBase.endsWith('/') ? configuredApiBase.slice(0, -1) : configuredApiBase
-const TOKEN_KEY = 'navkwabuild_token'
+const TOKEN_KEY = 'navkwabuild_session_token'
+const LEGACY_TOKEN_KEY = 'navkwabuild_token'
+
+function clearLegacyToken() {
+  try {
+    window.localStorage?.removeItem(LEGACY_TOKEN_KEY)
+  } catch {
+    // Storage access can be blocked by privacy settings.
+  }
+}
 
 export function getToken() {
-  return localStorage.getItem(TOKEN_KEY)
+  clearLegacyToken()
+
+  try {
+    return window.sessionStorage?.getItem(TOKEN_KEY) || null
+  } catch {
+    return null
+  }
 }
 
 export function setToken(token) {
-  if (token) {
-    localStorage.setItem(TOKEN_KEY, token)
-    return
-  }
+  clearLegacyToken()
 
-  localStorage.removeItem(TOKEN_KEY)
+  try {
+    if (token) {
+      window.sessionStorage?.setItem(TOKEN_KEY, token)
+      return
+    }
+
+    window.sessionStorage?.removeItem(TOKEN_KEY)
+  } catch {
+    // Keep the app usable in locked-down browsers; the API will simply require login again.
+  }
 }
 
 export class ApiError extends Error {
@@ -52,6 +73,44 @@ async function request(path, options = {}) {
   return payload
 }
 
+async function download(path, fallbackFilename = 'download') {
+  const token = getToken()
+
+  const response = await fetch(`${API_BASE}${path}`, {
+    headers: {
+      Accept: 'application/octet-stream',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  })
+
+  if (!response.ok) {
+    const contentType = response.headers.get('content-type') || ''
+    const payload = contentType.includes('application/json') ? await response.json() : null
+
+    throw new ApiError(payload?.message || 'Request failed', response.status, payload?.errors || {})
+  }
+
+  const blob = await response.blob()
+  const url = window.URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filenameFromDisposition(response.headers.get('content-disposition') || '') || fallbackFilename
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.URL.revokeObjectURL(url)
+
+  return true
+}
+
+function filenameFromDisposition(disposition = '') {
+  const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i)
+  if (utf8Match?.[1]) return decodeURIComponent(utf8Match[1].replaceAll('"', ''))
+
+  const quotedMatch = disposition.match(/filename="?([^";]+)"?/i)
+  return quotedMatch?.[1] || ''
+}
+
 function requestBody(payload) {
   return payload instanceof FormData ? payload : JSON.stringify(payload)
 }
@@ -81,6 +140,11 @@ export const api = {
     }),
   logout: () => request('/auth/logout', { method: 'POST' }),
   me: () => request('/auth/me'),
+  changePassword: (payload) =>
+    request('/security/password', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
   mfaStatus: () => request('/security/mfa'),
   setupMfa: (payload) =>
     request('/security/mfa/setup', {
@@ -522,6 +586,8 @@ export const api = {
     request(`/documents/${documentId}`, {
       method: 'DELETE',
     }),
+  downloadDocument: (documentId, filename) =>
+    download(`/documents/${documentId}/download`, filename || 'document'),
   drawings: () => request('/drawings?per_page=100'),
   uploadDrawing: (formData) =>
     request('/drawings', {
@@ -533,6 +599,8 @@ export const api = {
       method: 'POST',
       body: formData,
     }),
+  downloadDrawingRevision: (revisionId, filename) =>
+    download(`/drawing-revisions/${revisionId}/download`, filename || 'drawing-revision'),
   transitionDrawing: (drawingId, status) =>
     request(`/drawings/${drawingId}/transition`, {
       method: 'POST',
@@ -597,6 +665,11 @@ export const api = {
     request('/finance/bank-reconciliations', {
       method: 'POST',
       body: JSON.stringify(payload),
+    }),
+  uploadFinanceWorkbook: (formData) =>
+    request('/finance/workbooks', {
+      method: 'POST',
+      body: formData,
     }),
   createFinanceCreditNote: (payload) =>
     request('/finance/credit-notes', {

@@ -83,29 +83,49 @@ abstract class ApiController extends Controller
         $model = new $modelClass();
         $table = $model->getTable();
         $normalizedPrefix = $this->sequencePrefix($prefix);
-        $query = DB::table($table);
+        $normalizedScope = $this->normalizedSequenceScope($scope);
+        $scopeJson = json_encode($normalizedScope, JSON_THROW_ON_ERROR);
+        $sequenceKey = hash('sha256', json_encode([
+            'prefix' => $normalizedPrefix,
+            'model' => $modelClass,
+            'column' => $column,
+            'scope' => $normalizedScope,
+        ], JSON_THROW_ON_ERROR));
 
-        foreach ($scope as $field => $value) {
-            $query->where($field, $value);
-        }
+        return DB::transaction(function () use ($sequenceKey, $normalizedPrefix, $modelClass, $column, $scopeJson, $table, $normalizedScope, $pad): string {
+            DB::table('number_sequences')->insertOrIgnore([
+                'sequence_key' => $sequenceKey,
+                'prefix' => $normalizedPrefix,
+                'model_class' => $modelClass,
+                'column_name' => $column,
+                'scope' => $scopeJson,
+                'next_value' => $this->initialSequenceValue($table, $column, $normalizedPrefix, $normalizedScope),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
 
-        $next = (clone $query)
-            ->where($column, 'like', "{$normalizedPrefix}-%")
-            ->count() + 1;
+            $sequence = DB::table('number_sequences')
+                ->where('sequence_key', $sequenceKey)
+                ->lockForUpdate()
+                ->first();
 
-        do {
-            $candidate = sprintf("%s-%0{$pad}d", $normalizedPrefix, $next);
-            $existsQuery = DB::table($table);
+            $next = max(1, (int) ($sequence->next_value ?? 1));
 
-            foreach ($scope as $field => $value) {
-                $existsQuery->where($field, $value);
-            }
+            do {
+                $candidate = sprintf("%s-%0{$pad}d", $normalizedPrefix, $next);
+                $exists = $this->sequenceCandidateExists($table, $column, $candidate, $normalizedScope);
+                $next++;
+            } while ($exists);
 
-            $exists = $existsQuery->where($column, $candidate)->exists();
-            $next++;
-        } while ($exists);
+            DB::table('number_sequences')
+                ->where('sequence_key', $sequenceKey)
+                ->update([
+                    'next_value' => $next,
+                    'updated_at' => now(),
+                ]);
 
-        return $candidate;
+            return $candidate;
+        });
     }
 
     private function sequencePrefix(string $prefix): string
@@ -113,6 +133,35 @@ abstract class ApiController extends Controller
         $normalized = preg_replace('/[^A-Z0-9-]/', '', strtoupper($prefix));
 
         return blank($normalized) ? 'GEN' : trim($normalized, '-');
+    }
+
+    private function normalizedSequenceScope(array $scope): array
+    {
+        ksort($scope);
+
+        return $scope;
+    }
+
+    private function initialSequenceValue(string $table, string $column, string $prefix, array $scope): int
+    {
+        $query = DB::table($table)->where($column, 'like', "{$prefix}-%");
+
+        foreach ($scope as $field => $value) {
+            $query->where($field, $value);
+        }
+
+        return $query->count() + 1;
+    }
+
+    private function sequenceCandidateExists(string $table, string $column, string $candidate, array $scope): bool
+    {
+        $query = DB::table($table)->where($column, $candidate);
+
+        foreach ($scope as $field => $value) {
+            $query->where($field, $value);
+        }
+
+        return $query->exists();
     }
 
     protected function projectForTenant(Request $request, int|string $projectId): Project

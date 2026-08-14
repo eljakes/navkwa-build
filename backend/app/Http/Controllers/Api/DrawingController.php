@@ -16,6 +16,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class DrawingController extends ApiController
 {
+    private const DRAWING_FILE_EXTENSIONS = 'pdf,dwg,dxf';
+
     public function index(Request $request): JsonResponse
     {
         $drawings = Drawing::query()
@@ -53,7 +55,7 @@ class DrawingController extends ApiController
             'description' => ['nullable', 'string', 'max:4000'],
             'tags' => ['nullable', 'array'],
             'linked_records' => ['nullable', 'array'],
-            'file' => ['nullable', 'file', 'max:102400'],
+            'file' => ['nullable', 'file', 'max:102400', 'extensions:'.self::DRAWING_FILE_EXTENSIONS],
         ]);
 
         $projectId = $data['project_id'] ?? null;
@@ -126,7 +128,7 @@ class DrawingController extends ApiController
             'revision_code' => ['nullable', 'string', 'max:24'],
             'status' => ['nullable', Rule::in(['draft', 'issued_for_review', 'approved_for_construction'])],
             'notes' => ['nullable', 'string', 'max:4000'],
-            'file' => ['nullable', 'file', 'max:102400'],
+            'file' => ['nullable', 'file', 'max:102400', 'extensions:'.self::DRAWING_FILE_EXTENSIONS],
         ]);
 
         $revisionCode = $this->suppliedCode($data['revision_code'] ?? null) ?? $this->nextRevisionCode($drawing);

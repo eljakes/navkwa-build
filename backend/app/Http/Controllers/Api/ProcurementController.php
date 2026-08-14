@@ -89,9 +89,10 @@ class ProcurementController extends ApiController
 
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
-            'department' => ['nullable', 'string', 'max:120'],
+            'department' => ['required', 'string', 'max:120'],
             'delivery_location' => ['nullable', 'string', 'max:255'],
             'purpose' => ['nullable', 'string', 'max:4000'],
+            'requested_by_name' => ['required', 'string', 'max:255'],
             'priority' => ['nullable', Rule::in(['low', 'normal', 'medium', 'high', 'urgent', 'critical'])],
             'required_by' => ['nullable', 'date'],
             'justification' => ['nullable', 'string', 'max:4000'],
@@ -118,7 +119,7 @@ class ProcurementController extends ApiController
                 'project_id' => $projectModel->id,
                 'requisition_number' => $this->nextNumber('MR', PurchaseRequisition::class, 'requisition_number', $projectModel->company_id),
                 'title' => $data['title'],
-                'department' => $data['department'] ?? null,
+                'department' => $data['department'],
                 'delivery_location' => $data['delivery_location'] ?? null,
                 'purpose' => $data['purpose'] ?? $data['justification'] ?? null,
                 'priority' => $this->normalizePriority($data['priority'] ?? 'medium'),
@@ -127,6 +128,7 @@ class ProcurementController extends ApiController
                 'justification' => $data['justification'] ?? null,
                 'discount_amount' => $data['discount_amount'] ?? 0,
                 'attachments' => $this->storeRequisitionAttachments($request, $projectModel->company_id),
+                'requested_by_name' => $data['requested_by_name'],
                 'requested_by' => $this->user($request)->id,
             ]);
 
@@ -171,9 +173,10 @@ class ProcurementController extends ApiController
 
         $data = $request->validate([
             'title' => ['sometimes', 'string', 'max:255'],
-            'department' => ['nullable', 'string', 'max:120'],
+            'department' => ['sometimes', 'required', 'string', 'max:120'],
             'delivery_location' => ['nullable', 'string', 'max:255'],
             'purpose' => ['nullable', 'string', 'max:4000'],
+            'requested_by_name' => ['sometimes', 'required', 'string', 'max:255'],
             'priority' => ['sometimes', Rule::in(['low', 'normal', 'medium', 'high', 'urgent', 'critical'])],
             'required_by' => ['nullable', 'date'],
             'justification' => ['nullable', 'string', 'max:4000'],
@@ -1167,14 +1170,14 @@ class ProcurementController extends ApiController
         $events->push([
             'occurred_at' => $requisition->created_at?->toISOString(),
             'label' => 'Material Request created',
-            'actor' => $requisition->requestedBy?->name,
+            'actor' => $requisition->requested_by_name ?: $requisition->requestedBy?->name,
         ]);
 
         if ($requisition->submitted_at) {
             $events->push([
                 'occurred_at' => $requisition->submitted_at->toISOString(),
                 'label' => 'Material Request submitted',
-                'actor' => $requisition->requestedBy?->name,
+                'actor' => $requisition->requested_by_name ?: $requisition->requestedBy?->name,
             ]);
         }
 

@@ -293,7 +293,7 @@ class NavkwaBuildPhaseFourApiTest extends TestCase
             'role_id' => $role->id,
             'name' => 'Owner User',
             'email' => fake()->unique()->safeEmail(),
-            'password' => 'NavkwaBuild2026',
+            'password' => 'NavkwaBuild2026!',
         ]);
 
         $client = Client::query()->create([

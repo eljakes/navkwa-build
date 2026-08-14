@@ -30,7 +30,7 @@ class NavkwaBuildPhaseOneApiTest extends TestCase
             'currency' => 'GHS',
             'name' => 'Adjoa Admin',
             'email' => 'adjoa@example.com',
-            'password' => 'NavkwaBuild2026',
+            'password' => 'NavkwaBuild2026!',
         ]);
 
         $response
@@ -115,7 +115,7 @@ class NavkwaBuildPhaseOneApiTest extends TestCase
         $managedUserId = $this->postJson('/api/v1/organization/users', [
             'name' => 'Managed User',
             'email' => 'managed.user@example.com',
-            'password' => 'NavkwaBuild2026',
+            'password' => 'NavkwaBuild2026!',
             'branch_id' => $branch->id,
             'role_id' => $role->id,
             'permissions' => ['payroll.manage'],
@@ -135,7 +135,7 @@ class NavkwaBuildPhaseOneApiTest extends TestCase
         $this->patchJson("/api/v1/organization/users/{$managedUserId}", [
             'name' => 'Edited User',
             'email' => 'edited.user@example.com',
-            'password' => 'NavkwaBuild2027',
+            'password' => 'NavkwaBuild2027!',
             'branch_id' => $branch->id,
             'role_id' => $user->role_id,
             'permissions' => ['projects.manage', 'reports.view'],
@@ -147,7 +147,7 @@ class NavkwaBuildPhaseOneApiTest extends TestCase
             ->assertJsonPath('user.status', 'inactive');
 
         $managedUser = User::query()->findOrFail($managedUserId);
-        $this->assertTrue(Hash::check('NavkwaBuild2027', $managedUser->password));
+        $this->assertTrue(Hash::check('NavkwaBuild2027!', $managedUser->password));
         $this->assertSame(['projects.manage', 'reports.view'], $managedUser->permissions);
 
         $this->deleteJson("/api/v1/organization/users/{$managedUserId}")
@@ -183,7 +183,7 @@ class NavkwaBuildPhaseOneApiTest extends TestCase
             'role_id' => $tenderRole->id,
             'name' => 'Tender User',
             'email' => 'tender@example.com',
-            'password' => 'NavkwaBuild2026',
+            'password' => 'NavkwaBuild2026!',
         ]);
 
         $safetyUser = User::query()->create([
@@ -192,7 +192,7 @@ class NavkwaBuildPhaseOneApiTest extends TestCase
             'role_id' => $safetyRole->id,
             'name' => 'Safety User',
             'email' => 'safety@example.com',
-            'password' => 'NavkwaBuild2026',
+            'password' => 'NavkwaBuild2026!',
         ]);
 
         Sanctum::actingAs($tenderUser);
@@ -241,7 +241,7 @@ class NavkwaBuildPhaseOneApiTest extends TestCase
             'role_id' => $managerRole->id,
             'name' => 'Operations User',
             'email' => 'operations@example.com',
-            'password' => 'NavkwaBuild2026',
+            'password' => 'NavkwaBuild2026!',
         ]);
 
         Sanctum::actingAs($manager);
@@ -338,6 +338,8 @@ class NavkwaBuildPhaseOneApiTest extends TestCase
 
         $requisitionId = $this->postJson("/api/v1/projects/{$project->id}/requisitions", [
             'title' => 'Batch A reinforcement steel',
+            'requested_by_name' => 'Ama Procurement Officer',
+            'department' => 'Procurement',
             'priority' => 'high',
             'lines' => [
                 [
@@ -403,6 +405,7 @@ class NavkwaBuildPhaseOneApiTest extends TestCase
 
         $requisition = $this->postJson("/api/v1/projects/{$project->id}/requisitions", [
             'title' => 'Foundation concrete materials',
+            'requested_by_name' => 'Kwesi Site Officer',
             'department' => 'Construction',
             'delivery_location' => 'Site A Warehouse',
             'purpose' => 'Foundation concrete works.',
@@ -430,6 +433,7 @@ class NavkwaBuildPhaseOneApiTest extends TestCase
         ])
             ->assertCreated()
             ->assertJsonPath('requisition.requisition_number', fn (string $number) => str_starts_with($number, 'MR-'))
+            ->assertJsonPath('requisition.requested_by_name', 'Kwesi Site Officer')
             ->assertJsonPath('requisition.grand_total', '17150.00')
             ->json('requisition');
 
@@ -442,6 +446,7 @@ class NavkwaBuildPhaseOneApiTest extends TestCase
             'terms' => 'Quote inclusive of delivery to site.',
         ])
             ->assertCreated()
+            ->assertJsonPath('rfq.rfq_number', fn (string $number) => str_starts_with($number, 'RFQ-'))
             ->assertJsonPath('rfq.status', 'sent')
             ->assertJsonCount(2, 'rfq.suppliers')
             ->json('rfq.id');
@@ -472,6 +477,7 @@ class NavkwaBuildPhaseOneApiTest extends TestCase
             ],
         ])
             ->assertCreated()
+            ->assertJsonPath('quotation.quotation_number', fn (string $number) => str_starts_with($number, 'QT-'))
             ->assertJsonPath('quotation.total_amount', '16440.00')
             ->json('quotation.id');
 
@@ -481,6 +487,7 @@ class NavkwaBuildPhaseOneApiTest extends TestCase
 
         $purchaseOrderId = $this->postJson("/api/v1/procurement/quotations/{$quotationId}/purchase-order")
             ->assertCreated()
+            ->assertJsonPath('purchase_order.po_number', fn (string $number) => str_starts_with($number, 'PO-'))
             ->assertJsonPath('purchase_order.total_amount', '16440.00')
             ->json('purchase_order.id');
 
@@ -493,6 +500,7 @@ class NavkwaBuildPhaseOneApiTest extends TestCase
             'notes' => 'Delivered to Site A Warehouse.',
         ])
             ->assertCreated()
+            ->assertJsonPath('goods_receipt.grn_number', fn (string $number) => str_starts_with($number, 'GRN-'))
             ->assertJsonPath('goods_receipt.status', 'received')
             ->assertJsonCount(2, 'goods_receipt.lines')
             ->json('goods_receipt.id');
@@ -502,6 +510,7 @@ class NavkwaBuildPhaseOneApiTest extends TestCase
             'result_summary' => 'Materials accepted for foundation works.',
         ])
             ->assertCreated()
+            ->assertJsonPath('quality_inspection.inspection_number', fn (string $number) => str_starts_with($number, 'PQI-'))
             ->assertJsonPath('quality_inspection.status', 'passed');
 
         $invoiceId = $this->postJson("/api/v1/procurement/purchase-orders/{$purchaseOrderId}/supplier-invoices", [
@@ -511,6 +520,7 @@ class NavkwaBuildPhaseOneApiTest extends TestCase
             'tax_amount' => 390,
         ])
             ->assertCreated()
+            ->assertJsonPath('supplier_invoice.invoice_number', fn (string $number) => str_starts_with($number, 'SIN-'))
             ->assertJsonPath('supplier_invoice.total_amount', '16440.00')
             ->assertJsonPath('supplier_invoice.status', 'submitted')
             ->json('supplier_invoice.id');
@@ -527,8 +537,17 @@ class NavkwaBuildPhaseOneApiTest extends TestCase
             'reference' => 'PAY-CEM-001',
         ])
             ->assertCreated()
+            ->assertJsonPath('payment.payment_number', fn (string $number) => str_starts_with($number, 'SPY-'))
             ->assertJsonPath('payment.invoice.status', 'paid')
             ->assertJsonPath('payment.invoice.balance_due', '0.00');
+
+        $this->postJson("/api/v1/suppliers/{$cementSupplier->id}/contracts", [
+            'project_id' => $project->id,
+            'title' => 'Cement supply framework',
+            'contract_value' => 16440,
+        ])
+            ->assertCreated()
+            ->assertJsonPath('contract.contract_number', fn (string $number) => str_starts_with($number, 'SC-'));
 
         $this->getJson('/api/v1/procurement')
             ->assertOk()
@@ -566,6 +585,25 @@ class NavkwaBuildPhaseOneApiTest extends TestCase
 
         Storage::disk('local')->assertExists($documentPath);
 
+        foreach ([
+            ['type' => 'microsoft_excel', 'name' => 'quantity-takeoff.xlsx', 'mime' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+            ['type' => 'csv_import', 'name' => 'materials-import.csv', 'mime' => 'text/csv'],
+            ['type' => 'autocad', 'name' => 'site-layout.dwg', 'mime' => 'application/octet-stream'],
+        ] as $upload) {
+            $path = $this->post('/api/v1/documents', [
+                'branch_id' => $branch->id,
+                'project_id' => $project->id,
+                'title' => $upload['name'],
+                'document_type' => $upload['type'],
+                'file' => UploadedFile::fake()->create($upload['name'], 128, $upload['mime']),
+            ], ['Accept' => 'application/json'])
+                ->assertCreated()
+                ->assertJsonPath('document.document_type', $upload['type'])
+                ->json('document.file_path');
+
+            Storage::disk('local')->assertExists($path);
+        }
+
         $drawingId = $this->post('/api/v1/drawings', [
             'branch_id' => $branch->id,
             'project_id' => $project->id,
@@ -583,7 +621,7 @@ class NavkwaBuildPhaseOneApiTest extends TestCase
         $this->post("/api/v1/drawings/{$drawingId}/revisions", [
             'revision_code' => 'P02',
             'notes' => 'Updated room tags.',
-            'file' => UploadedFile::fake()->create('A-101-P02.pdf', 256, 'application/pdf'),
+            'file' => UploadedFile::fake()->create('A-101-P02.dxf', 256, 'application/dxf'),
         ], ['Accept' => 'application/json'])
             ->assertCreated()
             ->assertJsonPath('drawing.current_revision', 'P02');
@@ -623,7 +661,7 @@ class NavkwaBuildPhaseOneApiTest extends TestCase
             'role_id' => $role->id,
             'name' => 'Owner User',
             'email' => fake()->unique()->safeEmail(),
-            'password' => 'NavkwaBuild2026',
+            'password' => 'NavkwaBuild2026!',
         ]);
 
         return [$user, $branch, $company];

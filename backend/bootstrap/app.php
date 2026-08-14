@@ -3,6 +3,7 @@
 use App\Http\Middleware\CheckPermission;
 use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -21,17 +22,36 @@ return Application::configure(basePath: dirname(__DIR__))
                     ->by((string) ($request->user()?->id ?: $request->ip()));
             });
 
-            RateLimiter::for('auth.login', function (Request $request): Limit {
-                return Limit::perMinute((int) config('security.rate_limits.login_per_minute', 10))
-                    ->by(strtolower((string) $request->input('email')).'|'.$request->ip());
+            RateLimiter::for('auth.login', function (Request $request): array {
+                $email = hash('sha256', strtolower((string) $request->input('email')));
+
+                return [
+                    Limit::perMinute((int) config('security.rate_limits.login_per_minute', 5))
+                        ->by($email.'|'.$request->ip()),
+                    Limit::perMinute((int) config('security.rate_limits.login_ip_per_minute', 20))
+                        ->by((string) $request->ip()),
+                    Limit::perMinute((int) config('security.rate_limits.login_email_per_minute', 10))
+                        ->by($email),
+                ];
             });
 
-            RateLimiter::for('auth.mfa', function (Request $request): Limit {
-                return Limit::perMinute((int) config('security.rate_limits.mfa_per_minute', 8))
-                    ->by(hash('sha256', (string) $request->input('challenge_token')).'|'.$request->ip());
+            RateLimiter::for('auth.mfa', function (Request $request): array {
+                return [
+                    Limit::perMinute((int) config('security.rate_limits.mfa_per_minute', 5))
+                        ->by(hash('sha256', (string) $request->input('challenge_token')).'|'.$request->ip()),
+                    Limit::perMinute((int) config('security.rate_limits.mfa_ip_per_minute', 15))
+                        ->by((string) $request->ip()),
+                ];
             });
         },
     )
+    ->withSchedule(function (Schedule $schedule): void {
+        $schedule->command('navkwabuild:backup-daily')
+            ->dailyAt((string) config('backup.daily_at', '02:00'))
+            ->timezone((string) config('app.timezone', 'UTC'))
+            ->withoutOverlapping(180)
+            ->appendOutputTo(storage_path('logs/navkwabuild-backups.log'));
+    })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->append(SecurityHeaders::class);
         $middleware->alias([

@@ -29,6 +29,7 @@ use App\Models\PurchaseOrder;
 use App\Models\Role;
 use App\Models\TenderDocument;
 use App\Models\User;
+use App\Services\PlatformBackupService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -42,6 +43,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\PersonalAccessToken;
 use Throwable;
 
@@ -267,6 +269,7 @@ class PlatformAdminController extends ApiController
                 'job_title' => 'Company Administrator',
                 'password' => $temporaryPassword,
                 'password_changed_at' => now(),
+                'must_change_password' => true,
                 'status' => 'active',
             ]);
 
@@ -287,7 +290,7 @@ class PlatformAdminController extends ApiController
 
             $this->syncCompanyFeatureFlags($company, $enabledKeys, $this->user($request)->id);
             Storage::disk('local')->makeDirectory("tenants/{$company->tenant_key}");
-            $welcome = $this->sendWelcomeEmail($company, $admin, $temporaryPassword);
+            $welcome = $this->sendWelcomeEmail($company, $admin);
             $this->audit($request, 'platform.company.provisioned', $company, null, [
                 'tenant_key' => $company->tenant_key,
                 'admin_user_id' => $admin->id,
@@ -819,6 +822,7 @@ class PlatformAdminController extends ApiController
             'status' => $data['status'] ?? 'active',
             'password' => $data['password'],
             'password_changed_at' => now(),
+            'must_change_password' => true,
             'permissions' => $permissions,
         ]);
         $this->audit($request, 'platform.staff.created', $user, null, $this->staffPayload($user->fresh(['branch', 'role'])));
@@ -861,7 +865,10 @@ class PlatformAdminController extends ApiController
             $user->tokens()->delete();
         }
         if ($passwordChanged) {
-            $user->forceFill(['password_changed_at' => now()])->save();
+            $user->forceFill([
+                'password_changed_at' => now(),
+                'must_change_password' => true,
+            ])->save();
             $user->tokens()->delete();
         }
 
@@ -902,6 +909,11 @@ class PlatformAdminController extends ApiController
         if ((filled($data['email'] ?? null) && $data['email'] !== $user->email) || $passwordChanged) {
             abort_if(! Hash::check((string) ($data['current_password'] ?? ''), $user->password), 422, 'Your current password is incorrect.');
         }
+        if ($passwordChanged && Hash::check((string) $data['password'], $user->password)) {
+            throw ValidationException::withMessages([
+                'password' => ['Choose a new password that is different from your current password.'],
+            ]);
+        }
 
         unset($data['current_password'], $data['password_confirmation']);
         if (blank($data['password'] ?? null)) {
@@ -913,7 +925,10 @@ class PlatformAdminController extends ApiController
 
         $user->update($data);
         if ($passwordChanged) {
-            $user->forceFill(['password_changed_at' => now()])->save();
+            $user->forceFill([
+                'password_changed_at' => now(),
+                'must_change_password' => false,
+            ])->save();
             $this->revokeOtherTokens($request, $user);
         }
         $fresh = $user->fresh(['company.branches', 'branch', 'role']);
@@ -1019,52 +1034,23 @@ class PlatformAdminController extends ApiController
             'metadata' => ['nullable', 'array'],
         ]);
         $backupType = $data['backup_type'] ?? 'tenant';
-        abort_if($backupType === 'tenant' && empty($data['company_id']), 422, 'Select a company for tenant backups.');
-        $backupNumber = $this->nextGlobalNumber('BAK', PlatformBackup::class, 'backup_number');
-        $storagePath = filled($data['storage_path'] ?? null)
-            ? $data['storage_path']
-            : 'platform-backups/'.now()->format('Y/m')."/{$backupNumber}.json";
         $company = filled($data['company_id'] ?? null)
             ? Company::query()->with(['subscriptions.plan', 'brandingProfile', 'featureFlags.flag', 'branches', 'roles', 'users'])->findOrFail($data['company_id'])
             : null;
-        $backup = PlatformBackup::query()->create([
-            ...$data,
-            'backup_number' => $backupNumber,
-            'backup_type' => $backupType,
-            'status' => 'running',
-            'storage_path' => $storagePath,
-            'started_at' => now(),
-            'created_by' => $this->user($request)->id,
-        ]);
 
-        try {
-            $snapshot = $this->backupSnapshot($backup, $company);
-            $contents = json_encode($snapshot, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
-            Storage::disk('local')->put($storagePath, $contents);
-            abort_if(! Storage::disk('local')->exists($storagePath), 500, 'Backup snapshot could not be verified.');
+        abort_if($backupType === 'tenant' && ! $company, 422, 'Select a company for tenant backups.');
 
-            $backup->update([
-                'status' => 'completed',
-                'size_mb' => round(strlen($contents) / 1048576, 2),
-                'completed_at' => now(),
-                'verified_at' => now(),
-                'metadata' => [
-                    ...($data['metadata'] ?? []),
-                    'record_counts' => $snapshot['record_counts'] ?? [],
-                    'generated_by' => $this->user($request)->id,
-                ],
-            ]);
-        } catch (Throwable $exception) {
-            $backup->update([
-                'status' => 'failed',
-                'metadata' => [
-                    ...($data['metadata'] ?? []),
-                    'error' => $exception->getMessage(),
-                ],
-            ]);
-
-            throw $exception;
-        }
+        $backup = app(PlatformBackupService::class)->createBackup(
+            backupType: $backupType,
+            company: $backupType === 'tenant' ? $company : null,
+            storagePath: $data['storage_path'] ?? null,
+            metadata: [
+                ...($data['metadata'] ?? []),
+                'source' => 'manual',
+                'requested_by' => $this->user($request)->id,
+            ],
+            createdBy: $this->user($request)->id,
+        );
 
         $this->audit($request, 'platform.backup.completed', $backup, null, $backup->fresh()->toArray());
 
@@ -1820,6 +1806,8 @@ class PlatformAdminController extends ApiController
             'effective_permissions' => $user->accessPermissions(),
             'mfa_enabled' => filled($user->mfa_secret) && filled($user->mfa_enabled_at),
             'mfa_enabled_at' => $user->mfa_enabled_at?->toISOString(),
+            'password_changed_at' => $user->password_changed_at?->toISOString(),
+            'must_change_password' => (bool) $user->must_change_password,
             'locked_until' => $user->locked_until?->toISOString(),
             'last_login_at' => $user->last_login_at?->toISOString(),
             'created_at' => $user->created_at?->toISOString(),
@@ -1829,7 +1817,7 @@ class PlatformAdminController extends ApiController
 
     private function passwordRule(): Password
     {
-        return Password::min(12)->letters()->mixedCase()->numbers();
+        return Password::min(14)->letters()->mixedCase()->numbers()->symbols();
     }
 
     private function revokeOtherTokens(Request $request, User $user): void
@@ -2493,7 +2481,7 @@ class PlatformAdminController extends ApiController
         return $subscription->billing_interval === 'yearly' ? $amount / 12 : $amount;
     }
 
-    private function sendWelcomeEmail(Company $company, User $admin, string $password): array
+    private function sendWelcomeEmail(Company $company, User $admin): array
     {
         try {
             Mail::raw(
@@ -2501,8 +2489,8 @@ class PlatformAdminController extends ApiController
                     "Welcome to Navkwa Build, {$admin->name}.",
                     "Your company workspace {$company->name} has been provisioned.",
                     'Login URL: '.rtrim((string) config('app.url'), '/').'/login?tenant='.$company->tenant_key,
-                    "Temporary password: {$password}",
-                    'Please change this password after your first login.',
+                    'Contact your platform administrator for the temporary sign-in password.',
+                    'You will be required to change it after your first login.',
                 ]),
                 fn ($mail) => $mail->to($admin->email, $admin->name)->subject('Your Navkwa Build workspace is ready'),
             );
@@ -2547,7 +2535,7 @@ class PlatformAdminController extends ApiController
 
     private function temporaryPassword(): string
     {
-        return 'NavkwaBuild'.now()->format('ymd').Str::upper(Str::random(6)).'1';
+        return Str::password(24, letters: true, numbers: true, symbols: true, spaces: false);
     }
 
     private function nextGlobalNumber(string $prefix, string $modelClass, string $column): string

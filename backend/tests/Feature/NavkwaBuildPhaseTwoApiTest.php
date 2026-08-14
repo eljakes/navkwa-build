@@ -388,7 +388,7 @@ class NavkwaBuildPhaseTwoApiTest extends TestCase
             'role_id' => $role->id,
             'name' => 'Owner User',
             'email' => fake()->unique()->safeEmail(),
-            'password' => 'NavkwaBuild2026',
+            'password' => 'NavkwaBuild2026!',
         ]);
 
         return [$user, $branch, $company];

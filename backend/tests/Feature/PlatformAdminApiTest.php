@@ -18,6 +18,7 @@ use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
@@ -154,6 +155,64 @@ class PlatformAdminApiTest extends TestCase
             ->assertJsonPath('command_center.status', 'healthy');
     }
 
+    public function test_daily_backup_command_creates_encrypted_cloud_console_and_erp_backups(): void
+    {
+        Storage::fake('local');
+
+        [, $tenantCompany] = $this->userWithPermissions(['reports.view']);
+        $platformCompany = Company::query()->create([
+            'tenant_key' => 'navkwa-group',
+            'name' => 'Navkwa Group Ltd.',
+            'default_currency' => 'GHS',
+            'country' => 'GH',
+            'status' => 'active',
+            'settings' => ['tenant_mode' => 'platform_operator'],
+        ]);
+        $platformBranch = Branch::query()->create([
+            'company_id' => $platformCompany->id,
+            'name' => 'Head Office',
+            'code' => 'HQ',
+            'country' => 'GH',
+        ]);
+        $platformRole = Role::query()->create([
+            'company_id' => $platformCompany->id,
+            'name' => 'Platform Super Admin',
+            'slug' => 'platform-super-admin',
+            'permissions' => ['platform.manage'],
+            'is_system' => true,
+        ]);
+        User::query()->create([
+            'company_id' => $platformCompany->id,
+            'branch_id' => $platformBranch->id,
+            'role_id' => $platformRole->id,
+            'name' => 'Platform Admin',
+            'email' => 'platform.backup@navkwa.test',
+            'password' => 'NavkwaBuild2026!',
+            'status' => 'active',
+        ]);
+
+        $this->artisan('navkwabuild:backup-daily')
+            ->expectsOutput('Cloud Console backup completed.')
+            ->expectsOutput("ERP backup completed for {$tenantCompany->name}.")
+            ->assertSuccessful();
+
+        $platformBackup = PlatformBackup::query()->where('backup_type', 'platform')->firstOrFail();
+        $tenantBackup = PlatformBackup::query()->where('backup_type', 'tenant')->where('company_id', $tenantCompany->id)->firstOrFail();
+
+        Storage::disk('local')->assertExists($platformBackup->storage_path);
+        Storage::disk('local')->assertExists($tenantBackup->storage_path);
+
+        $platformSnapshot = json_decode(Crypt::decryptString(Storage::disk('local')->get($platformBackup->storage_path)), true, 512, JSON_THROW_ON_ERROR);
+        $tenantSnapshot = json_decode(Crypt::decryptString(Storage::disk('local')->get($tenantBackup->storage_path)), true, 512, JSON_THROW_ON_ERROR);
+
+        $this->assertSame('navkwa_build_cloud_console', $platformSnapshot['scope']);
+        $this->assertSame('navkwa_build_erp', $tenantSnapshot['scope']);
+        $this->assertArrayHasKey('platform_backups', $platformSnapshot['tables']);
+        $this->assertArrayHasKey('users', $tenantSnapshot['tables']);
+        $this->assertTrue($platformBackup->metadata['encrypted']);
+        $this->assertTrue($tenantBackup->metadata['encrypted']);
+    }
+
     public function test_platform_admin_can_manage_navkwa_cloud_console_users_and_own_login_details(): void
     {
         [$platformUser] = $this->userWithPermissions(['platform.manage']);
@@ -162,7 +221,7 @@ class PlatformAdminApiTest extends TestCase
         $workerId = $this->postJson('/api/v1/platform-admin/users', [
             'name' => 'Navkwa Support Lead',
             'email' => 'support.lead@navkwa.test',
-            'password' => 'WorkerPass2026',
+            'password' => 'WorkerPass2026!',
             'phone' => '+233300000010',
             'job_title' => 'Customer Success Lead',
             'permissions' => ['platform.manage'],
@@ -183,7 +242,7 @@ class PlatformAdminApiTest extends TestCase
         $this->patchJson("/api/v1/platform-admin/users/{$workerId}", [
             'name' => 'Navkwa Console Operator',
             'email' => 'console.operator@navkwa.test',
-            'password' => 'WorkerPass2027',
+            'password' => 'WorkerPass2027!',
             'job_title' => 'Platform Operator',
             'status' => 'active',
             'permissions' => ['platform.manage'],
@@ -194,7 +253,7 @@ class PlatformAdminApiTest extends TestCase
 
         $this->postJson('/api/v1/auth/login', [
             'email' => 'console.operator@navkwa.test',
-            'password' => 'WorkerPass2027',
+            'password' => 'WorkerPass2027!',
         ])->assertOk();
 
         $this->patchJson('/api/v1/platform-admin/profile', [
@@ -213,16 +272,16 @@ class PlatformAdminApiTest extends TestCase
 
         $this->patchJson('/api/v1/platform-admin/profile', [
             'email' => 'ceo@navkwa.test',
-            'current_password' => 'NavkwaBuild2026',
-            'password' => 'NewCeoPass2026',
-            'password_confirmation' => 'NewCeoPass2026',
+            'current_password' => 'NavkwaBuild2026!',
+            'password' => 'NewCeoPass2026!',
+            'password_confirmation' => 'NewCeoPass2026!',
         ])
             ->assertOk()
             ->assertJsonPath('user.email', 'ceo@navkwa.test');
 
         $this->postJson('/api/v1/auth/login', [
             'email' => 'ceo@navkwa.test',
-            'password' => 'NewCeoPass2026',
+            'password' => 'NewCeoPass2026!',
         ])->assertOk();
 
         $this->deleteJson("/api/v1/platform-admin/users/{$workerId}")
@@ -237,7 +296,7 @@ class PlatformAdminApiTest extends TestCase
 
     public function test_platform_admin_can_be_bootstrapped_from_artisan(): void
     {
-        $this->artisan('navkwabuild:platform-admin bootstrap@navkwa.test --create --password=NavkwaBuild2026AA1')
+        $this->artisan('navkwabuild:platform-admin bootstrap@navkwa.test --create --password=NavkwaBuild2026AA1!')
             ->assertSuccessful();
 
         $user = User::query()->where('email', 'bootstrap@navkwa.test')->firstOrFail();
@@ -429,7 +488,7 @@ class PlatformAdminApiTest extends TestCase
             'currency' => 'GHS',
             'primary_contact_name' => 'Tenant Admin',
             'primary_contact_email' => 'tenant.admin@archive-ready.test',
-            'admin_password' => 'TenantPass2026',
+            'admin_password' => 'TenantPass2026!',
             'subscription_plan_id' => $professional->id,
             'status' => 'active',
         ])->assertCreated();
@@ -467,7 +526,7 @@ class PlatformAdminApiTest extends TestCase
         ]);
         $this->postJson('/api/v1/auth/login', [
             'email' => 'tenant.admin@archive-ready.test',
-            'password' => 'TenantPass2026',
+            'password' => 'TenantPass2026!',
         ])->assertOk();
 
         Sanctum::actingAs($platformUser);
@@ -481,7 +540,7 @@ class PlatformAdminApiTest extends TestCase
 
         $this->postJson('/api/v1/auth/login', [
             'email' => 'tenant.admin@archive-ready.test',
-            'password' => 'TenantPass2026',
+            'password' => 'TenantPass2026!',
         ])->assertStatus(422);
 
         Sanctum::actingAs($platformUser);
@@ -507,7 +566,7 @@ class PlatformAdminApiTest extends TestCase
 
         $this->postJson('/api/v1/auth/login', [
             'email' => 'tenant.admin@archive-ready.test',
-            'password' => 'TenantPass2026',
+            'password' => 'TenantPass2026!',
         ])->assertOk();
     }
 
@@ -528,7 +587,7 @@ class PlatformAdminApiTest extends TestCase
             'currency' => 'GHS',
             'primary_contact_name' => 'Tenant Admin',
             'primary_contact_email' => 'tenant.admin@permanent-delete.test',
-            'admin_password' => 'TenantPass2026',
+            'admin_password' => 'TenantPass2026!',
             'subscription_plan_id' => $professional->id,
             'status' => 'active',
         ])->assertCreated();
@@ -620,7 +679,7 @@ class PlatformAdminApiTest extends TestCase
             'currency' => 'GHS',
             'primary_contact_name' => 'Subscription Admin',
             'primary_contact_email' => 'subscription.admin@builders.test',
-            'admin_password' => 'TenantPass2026',
+            'admin_password' => 'TenantPass2026!',
             'subscription_plan_id' => $starter->id,
             'status' => 'active',
         ])
@@ -728,7 +787,7 @@ class PlatformAdminApiTest extends TestCase
             'currency' => 'GHS',
             'primary_contact_name' => 'Console Admin',
             'primary_contact_email' => 'console.admin@integrated.test',
-            'admin_password' => 'TenantPass2026',
+            'admin_password' => 'TenantPass2026!',
             'status' => 'active',
         ])->assertCreated()->json('company.id');
 
@@ -765,7 +824,9 @@ class PlatformAdminApiTest extends TestCase
             ->json('backup');
 
         Storage::disk('local')->assertExists($backup['storage_path']);
-        $this->assertStringContainsString('Console Integrated Builders', Storage::disk('local')->get($backup['storage_path']));
+        $encryptedSnapshot = Storage::disk('local')->get($backup['storage_path']);
+        $this->assertStringNotContainsString('Console Integrated Builders', $encryptedSnapshot);
+        $this->assertStringContainsString('Console Integrated Builders', Crypt::decryptString($encryptedSnapshot));
         $this->assertDatabaseHas('platform_backups', [
             'id' => $backup['id'],
             'status' => 'completed',
@@ -908,7 +969,7 @@ class PlatformAdminApiTest extends TestCase
             'role_id' => $role->id,
             'name' => 'Platform Test User',
             'email' => fake()->unique()->safeEmail(),
-            'password' => 'NavkwaBuild2026',
+            'password' => 'NavkwaBuild2026!',
             'status' => 'active',
         ]);
 

@@ -2480,6 +2480,13 @@ textarea:focus-visible {
   gap: 16px;
 }
 
+.security-warning {
+  margin: 0;
+  color: var(--danger);
+  font-size: 13px;
+  font-weight: 780;
+}
+
 .security-status-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -3620,6 +3627,13 @@ textarea:focus-visible {
   font-weight: 720;
 }
 
+.field small {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
 .field input,
 .field select,
 .field textarea {
@@ -4416,6 +4430,15 @@ tbody tr:last-child td {
     0 30px 76px rgba(2, 8, 23, 0.34),
     inset 0 1px 0 rgba(255, 255, 255, 0.72);
   backdrop-filter: blur(18px) saturate(1.12);
+}
+
+.auth-autofill-decoys {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
 }
 
 .auth-action-row {

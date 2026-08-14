@@ -338,7 +338,8 @@ class PeopleController extends ApiController
                 'phone' => $candidate->phone,
                 'job_title' => $vacancy->title,
                 'status' => 'active',
-                'password' => Str::random(32),
+                'password' => Str::password(24, letters: true, numbers: true, symbols: true, spaces: false),
+                'must_change_password' => true,
                 'permissions' => ['payroll.manage'],
             ]
         );

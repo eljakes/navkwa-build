@@ -123,6 +123,8 @@ DB_PASSWORD=navkwabuild_secret
 - Run `composer install --no-dev --optimize-autoloader`, `php artisan migrate --force`, `php artisan storage:link --force`, `php artisan config:cache`, `php artisan route:cache`, and `php artisan view:cache` during release.
 - Public project portfolio images are served from Laravel public storage. Operational documents and file downloads remain protected through authenticated API endpoints.
 - Run a queue worker for `QUEUE_CONNECTION=database`, and monitor failed jobs.
+- Run Laravel's scheduler every minute, for example `* * * * * cd /path/to/backend && php artisan schedule:run >> /dev/null 2>&1`. This triggers `php artisan navkwabuild:backup-daily` once every 24 hours.
+- Set `BACKUP_DISK`, `BACKUP_PATH`, and `BACKUP_DAILY_AT`. The default creates encrypted ERP tenant and Cloud Console backups at 02:00; use off-server storage such as S3 for stronger disaster recovery.
 - Create the first Navkwa Build Cloud Console administrator with `php artisan navkwabuild:platform-admin admin@navkwabuild.com --create`, then change the temporary password immediately and enable MFA.
 - The frontend refreshes authenticated ERP data from Laravel every `VITE_LIVE_REFRESH_MS` milliseconds. Set it to `0` to disable polling when replacing it with websockets.
 

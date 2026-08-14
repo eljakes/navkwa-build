@@ -18,6 +18,8 @@ use App\Models\Role;
 use App\Models\Supplier;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -239,6 +241,47 @@ class NavkwaBuildPhaseThreeApiTest extends TestCase
         $this->assertGreaterThanOrEqual(1, FinanceRetention::query()->count());
     }
 
+    public function test_finance_workbook_uploads_store_excel_files_as_documents(): void
+    {
+        Storage::fake('local');
+
+        [$user, $branch] = $this->tenantUser();
+        Sanctum::actingAs($user);
+
+        $project = Project::query()->create([
+            'company_id' => $user->company_id,
+            'branch_id' => $branch->id,
+            'code' => 'PRJ-FIN-XLS',
+            'name' => 'Finance Workbook Project',
+        ]);
+
+        $workbookPath = $this->post('/api/v1/finance/workbooks', [
+            'branch_id' => $branch->id,
+            'project_id' => $project->id,
+            'title' => 'August bank statement import',
+            'workbook_type' => 'bank_statement',
+            'description' => 'Statement prepared for reconciliation.',
+            'file' => UploadedFile::fake()->create('august-bank-statement.xlsx', 256, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'),
+        ], ['Accept' => 'application/json'])
+            ->assertCreated()
+            ->assertJsonPath('workbook.document_type', 'finance_workbook')
+            ->assertJsonPath('workbook.folder', 'Finance / Bank Statement')
+            ->json('workbook.file_path');
+
+        Storage::disk('local')->assertExists($workbookPath);
+
+        $this->assertDatabaseHas('documents', [
+            'company_id' => $user->company_id,
+            'project_id' => $project->id,
+            'document_type' => 'finance_workbook',
+            'original_filename' => 'august-bank-statement.xlsx',
+        ]);
+
+        $this->getJson('/api/v1/finance')
+            ->assertOk()
+            ->assertJsonPath('workbooks.0.document_type', 'finance_workbook');
+    }
+
     public function test_admin_approval_inbox_lists_and_reviews_pending_expenses(): void
     {
         [$admin, $branch] = $this->tenantUser();
@@ -274,7 +317,7 @@ class NavkwaBuildPhaseThreeApiTest extends TestCase
             'role_id' => $financeRole->id,
             'name' => 'Finance User',
             'email' => fake()->unique()->safeEmail(),
-            'password' => 'NavkwaBuild2026',
+            'password' => 'NavkwaBuild2026!',
         ]);
 
         Sanctum::actingAs($financeUser);
@@ -311,7 +354,7 @@ class NavkwaBuildPhaseThreeApiTest extends TestCase
             'role_id' => $user->role_id,
             'name' => 'Payroll Worker',
             'email' => fake()->unique()->safeEmail(),
-            'password' => 'NavkwaBuild2026',
+            'password' => 'NavkwaBuild2026!',
         ]);
 
         $employeeId = $this->postJson('/api/v1/people/employees', [
@@ -700,7 +743,7 @@ class NavkwaBuildPhaseThreeApiTest extends TestCase
             'role_id' => $hrRole->id,
             'name' => 'HR User',
             'email' => fake()->unique()->safeEmail(),
-            'password' => 'NavkwaBuild2026',
+            'password' => 'NavkwaBuild2026!',
         ]);
 
         Sanctum::actingAs($hrUser);
@@ -721,7 +764,7 @@ class NavkwaBuildPhaseThreeApiTest extends TestCase
         $newUserId = $this->postJson('/api/v1/organization/users', [
             'name' => 'Attendance Clerk',
             'email' => fake()->unique()->safeEmail(),
-            'password' => 'TempPass2026',
+            'password' => 'TempPass2026!!',
             'branch_id' => $branch->id,
             'role_name' => 'Site Attendance Officer',
             'permissions' => ['payroll.manage', 'attendance.manage'],
@@ -734,7 +777,7 @@ class NavkwaBuildPhaseThreeApiTest extends TestCase
         $customUserId = $this->postJson('/api/v1/organization/users', [
             'name' => 'Night Shift Supervisor',
             'email' => fake()->unique()->safeEmail(),
-            'password' => 'TempPass2026',
+            'password' => 'TempPass2026!!',
             'branch_id' => $branch->id,
             'role_name' => 'Night Shift Supervisor',
             'permissions' => ['payroll.manage', 'attendance.manage'],
@@ -1153,7 +1196,7 @@ class NavkwaBuildPhaseThreeApiTest extends TestCase
             'role_id' => $role->id,
             'name' => 'Owner User',
             'email' => fake()->unique()->safeEmail(),
-            'password' => 'NavkwaBuild2026',
+            'password' => 'NavkwaBuild2026!',
         ]);
 
         return [$user, $branch, $company];

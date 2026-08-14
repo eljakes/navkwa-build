@@ -53,6 +53,10 @@ import {
 import { api, getToken, setToken, validationSummary } from './lib/api'
 import './App.css'
 
+const documentUploadAccept = '.pdf,.doc,.docx,.xls,.xlsx,.xlsm,.csv,.dwg,.dxf,.jpg,.jpeg,.png,.webp'
+const drawingUploadAccept = '.pdf,.dwg,.dxf'
+const financeWorkbookAccept = '.xls,.xlsx,.xlsm,.csv'
+
 const navItems = [
   { id: 'platform', label: 'Cloud Console', icon: ShieldCheck, permissions: ['platform.manage'] },
   { id: 'dashboard', label: 'Dashboard', icon: BarChart3, permissions: ['reports.view'] },
@@ -72,6 +76,7 @@ const navItems = [
   { id: 'reports', label: 'Reports', icon: ClipboardList, permissions: ['reports.view'] },
   { id: 'bi', label: 'Intelligence', icon: BarChart3, permissions: ['bi.manage'] },
   { id: 'automation', label: 'Automation', icon: Workflow, permissions: ['automation.manage'] },
+  { id: 'account', label: 'Account Security', icon: ShieldCheck, permissions: [] },
   { id: 'admin', label: 'Admin', icon: Settings, permissions: ['settings.manage'] },
 ]
 
@@ -332,6 +337,7 @@ const emptyPlatformAdminData = {
 const emptyAdminApprovalData = { summary: {}, items: [] }
 const emptyOrganizationData = { company: { branches: [], roles: [], users: [], settings: {} }, clients: [], suppliers: [] }
 const emptyAccountSecurity = { mfa: { enabled: false, enabled_at: null, last_used_at: null, recovery_codes_remaining: 0 } }
+const emptySecurityForms = { current_password: '', password: '', password_confirmation: '', mfa_code: '', recovery_code: '' }
 const emptyList = []
 
 const currencyFormatter = new Intl.NumberFormat('en-GH', {
@@ -530,18 +536,6 @@ const emptyBudgetForm = {
   budget_amount: '',
 }
 
-const emptyReqForm = {
-  title: '',
-  priority: 'normal',
-  required_by: '',
-  supplier_id: '',
-  description: '',
-  cost_code: '',
-  quantity: 1,
-  unit: 'each',
-  estimated_unit_cost: '',
-}
-
 const emptyLeadForm = {
   branch_id: '',
   company_name: '',
@@ -617,6 +611,7 @@ const emptyFinanceForms = {
   account: { account_code: '', account_name: '', account_type: 'asset', normal_balance: 'debit', description: '' },
   bankAccount: { branch_id: '', account_name: '', bank_name: '', account_number: '', currency: 'GHS', opening_balance: 0, is_default: false },
   reconciliation: { finance_bank_account_id: '', statement_date: new Date().toISOString().slice(0, 10), statement_balance: '', notes: '' },
+  workbook: { branch_id: '', project_id: '', title: '', workbook_type: 'general_finance', description: '', file: null },
   creditNote: { invoice_id: '', amount: '', tax_amount: 0, reason: '' },
   retention: { project_id: '', invoice_id: '', supplier_invoice_id: '', party_type: 'client', base_amount: '', retention_percent: 10, retention_amount: '', due_date: '' },
   progressBilling: { project_id: '', milestone_name: '', progress_percent: '', billable_amount: '', retention_percent: 10, due_date: '', create_invoice: false },
@@ -994,7 +989,6 @@ function App() {
   const [projectForm, setProjectForm] = useState(emptyProjectForm)
   const [taskForm, setTaskForm] = useState(emptyTaskForm)
   const [budgetForm, setBudgetForm] = useState(emptyBudgetForm)
-  const [reqForm, setReqForm] = useState(emptyReqForm)
   const [documentForm, setDocumentForm] = useState({})
   const [drawingForm, setDrawingForm] = useState({})
   const [revisionForm, setRevisionForm] = useState({ drawing_id: '', revision_code: '', notes: '' })
@@ -1012,11 +1006,7 @@ function App() {
   const [portalForms, setPortalForms] = useState(emptyPortalForms)
   const [phaseFourForms, setPhaseFourForms] = useState(emptyPhaseFourForms)
   const [platformForms, setPlatformForms] = useState(emptyPlatformForms)
-  const [securityForms, setSecurityForms] = useState({
-    current_password: '',
-    mfa_code: '',
-    recovery_code: '',
-  })
+  const [securityForms, setSecurityForms] = useState(emptySecurityForms)
   const [adminForms, setAdminForms] = useState({
     company: {},
     branch: { code: '', name: '', city: '', country: 'GH' },
@@ -1313,7 +1303,7 @@ function App() {
         setTokenReady(false)
         setAccountSecurity(emptyAccountSecurity)
         setMfaSetup(null)
-        setSecurityForms({ current_password: '', mfa_code: '', recovery_code: '' })
+        setSecurityForms(emptySecurityForms)
       }
 
       if (!silent) {
@@ -1376,7 +1366,7 @@ function App() {
       setSelectedProjectId(null)
       setAccountSecurity(emptyAccountSecurity)
       setMfaSetup(null)
-      setSecurityForms({ current_password: '', mfa_code: '', recovery_code: '' })
+      setSecurityForms(emptySecurityForms)
     }
   }
 
@@ -1423,7 +1413,7 @@ function App() {
         setMfaChallenge(null)
         setAccountSecurity(emptyAccountSecurity)
         setMfaSetup(null)
-        setSecurityForms({ current_password: '', mfa_code: '', recovery_code: '' })
+        setSecurityForms(emptySecurityForms)
         setError(cloudConsolePortal ? 'Use a Navkwa Build Cloud Console administrator account.' : 'Use your company Navkwa Build account on this login page.')
 
         return
@@ -1436,6 +1426,7 @@ function App() {
       setActiveView(nextNavItems[0]?.id || (cloudConsolePortal ? 'platform' : 'dashboard'))
       setTokenReady(true)
     } catch (err) {
+      setAuthForm((current) => ({ ...current, password: '', mfa_code: '', recovery_code: '' }))
       setError(validationSummary(err))
     } finally {
       setLoading(false)
@@ -1456,7 +1447,7 @@ function App() {
     setMfaChallenge(null)
     setAccountSecurity(emptyAccountSecurity)
     setMfaSetup(null)
-    setSecurityForms({ current_password: '', mfa_code: '', recovery_code: '' })
+    setSecurityForms(emptySecurityForms)
     setActiveView(cloudConsolePortal ? 'platform' : 'dashboard')
   }
 
@@ -1517,32 +1508,6 @@ function App() {
       'Budget line added.',
     )
     setBudgetForm(emptyBudgetForm)
-  }
-
-  async function createRequisition(event) {
-    event.preventDefault()
-    if (!selectedProject) return
-
-    await runAction(
-      () =>
-        api.createRequisition(selectedProject.id, {
-          title: reqForm.title,
-          priority: reqForm.priority,
-          required_by: reqForm.required_by || null,
-          lines: [
-            {
-              supplier_id: reqForm.supplier_id ? Number(reqForm.supplier_id) : null,
-              description: reqForm.description,
-              cost_code: reqForm.cost_code,
-              quantity: Number(reqForm.quantity || 1),
-              unit: reqForm.unit || 'each',
-              estimated_unit_cost: Number(reqForm.estimated_unit_cost || 0),
-            },
-          ],
-        }),
-      'Requisition created.',
-    )
-    setReqForm({ ...emptyReqForm, supplier_id: reqForm.supplier_id })
   }
 
   async function createLead(event) {
@@ -1950,6 +1915,24 @@ function App() {
       'Journal entry posted.',
     )
     setFinanceForms((current) => ({ ...current, journal: { ...emptyFinanceForms.journal, entry_date: form.entry_date } }))
+  }
+
+  async function uploadFinanceWorkbook(event) {
+    event.preventDefault()
+    const form = financeForms.workbook
+
+    if (!form.file) return
+
+    const formData = new FormData()
+    Object.entries(form).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') formData.append(key, value)
+    })
+
+    const result = await runAction(() => api.uploadFinanceWorkbook(formData), 'Finance workbook uploaded.')
+    if (result) {
+      setFinanceForms((current) => ({ ...current, workbook: emptyFinanceForms.workbook }))
+      event.currentTarget.reset()
+    }
   }
 
   async function createEmployee(event) {
@@ -2677,7 +2660,31 @@ function App() {
     if (result?.security) {
       setAccountSecurity(result.security)
       setMfaSetup(result.setup || null)
-      setSecurityForms({ current_password: '', mfa_code: '', recovery_code: '' })
+      setSecurityForms(emptySecurityForms)
+    } else {
+      setSecurityForms(emptySecurityForms)
+    }
+  }
+
+  async function changeOwnPassword(event) {
+    event.preventDefault()
+    const result = await runAction(
+      () =>
+        api.changePassword({
+          current_password: securityForms.current_password,
+          password: securityForms.password,
+          password_confirmation: securityForms.password_confirmation,
+        }),
+      'Password changed.',
+      { skipRefresh: true },
+    )
+
+    if (result?.user) {
+      setUser(result.user)
+      setSecurityForms(emptySecurityForms)
+      await refreshWorkspace({ force: true })
+    } else {
+      setSecurityForms(emptySecurityForms)
     }
   }
 
@@ -2696,7 +2703,9 @@ function App() {
     if (result?.security) {
       setAccountSecurity(result.security)
       setMfaSetup((current) => (current ? { ...current, enabled: true } : null))
-      setSecurityForms({ current_password: '', mfa_code: '', recovery_code: '' })
+      setSecurityForms(emptySecurityForms)
+    } else {
+      setSecurityForms(emptySecurityForms)
     }
   }
 
@@ -2720,7 +2729,9 @@ function App() {
     if (result?.security) {
       setAccountSecurity(result.security)
       setMfaSetup(null)
-      setSecurityForms({ current_password: '', mfa_code: '', recovery_code: '' })
+      setSecurityForms(emptySecurityForms)
+    } else {
+      setSecurityForms(emptySecurityForms)
     }
   }
 
@@ -2739,7 +2750,9 @@ function App() {
     if (result?.security) {
       setAccountSecurity(result.security)
       setMfaSetup({ recovery_codes: result.recovery_codes || [] })
-      setSecurityForms({ current_password: '', mfa_code: '', recovery_code: '' })
+      setSecurityForms(emptySecurityForms)
+    } else {
+      setSecurityForms(emptySecurityForms)
     }
   }
 
@@ -2930,6 +2943,8 @@ function App() {
 
   const activeTitle = activeView === 'compliance'
     ? 'Quality Assurance and Health, Safety, and Environment'
+    : activeView === 'account'
+      ? 'Account Security'
     : activeView === 'crm'
       ? 'Customer Relation Management(CRM)'
       : activeView === 'platform'
@@ -3125,6 +3140,7 @@ function App() {
             deleteStaffUser={deletePlatformStaffUser}
             saveProfile={savePlatformProfile}
             startMfaSetup={startMfaSetup}
+            changePassword={changeOwnPassword}
             enableMfa={enableMfa}
             disableMfa={disableMfa}
             regenerateMfaRecoveryCodes={regenerateMfaRecoveryCodes}
@@ -3198,10 +3214,6 @@ function App() {
             projects={projects}
             suppliers={suppliers}
             procurement={procurement}
-            currentUser={user}
-            reqForm={reqForm}
-            setReqForm={setReqForm}
-            createRequisition={createRequisition}
             requisitions={requisitions}
             purchaseOrders={purchaseOrders}
             selectedProjectRequisitions={selectedProjectRequisitions}
@@ -3253,6 +3265,7 @@ function App() {
             recordPayment={recordPayment}
             createExpense={createExpense}
             createJournalEntry={createJournalEntry}
+            uploadFinanceWorkbook={uploadFinanceWorkbook}
             runAction={runAction}
           />
         )}
@@ -3363,6 +3376,20 @@ function App() {
             runAction={runAction}
           />
         )}
+        {activeView === 'account' && (
+          <AccountSecurityPanel
+            currentUser={user}
+            accountSecurity={accountSecurity}
+            mfaSetup={mfaSetup}
+            securityForms={securityForms}
+            setSecurityForm={setForm(setSecurityForms)}
+            changePassword={changeOwnPassword}
+            startMfaSetup={startMfaSetup}
+            enableMfa={enableMfa}
+            disableMfa={disableMfa}
+            regenerateMfaRecoveryCodes={regenerateMfaRecoveryCodes}
+          />
+        )}
         {activeView === 'admin' && (
           <AdminView
             organization={organization}
@@ -3381,6 +3408,7 @@ function App() {
             setSecurityForm={setForm(setSecurityForms)}
             archiveCompany={archiveCompany}
             startMfaSetup={startMfaSetup}
+            changePassword={changeOwnPassword}
             enableMfa={enableMfa}
             disableMfa={disableMfa}
             regenerateMfaRecoveryCodes={regenerateMfaRecoveryCodes}
@@ -3418,6 +3446,7 @@ function ThemeToggle({ theme, onToggle, disabled = false }) {
 function AuthScreen({ brandName, authForm, setAuthForm, handleAuth, mfaChallenge, resetMfaChallenge, loading, error }) {
   const [showPassword, setShowPassword] = useState(false)
   const isMfaStep = Boolean(mfaChallenge?.challenge_token)
+  const loginPasswordFieldName = useMemo(() => `nb-login-${Math.random().toString(36).slice(2)}`, [])
 
   return (
     <main className="auth-layout">
@@ -3449,12 +3478,16 @@ function AuthScreen({ brandName, authForm, setAuthForm, handleAuth, mfaChallenge
             </div>
           </div>
         </div>
-        <form onSubmit={handleAuth} className="auth-form">
+        <form onSubmit={handleAuth} className="auth-form" autoComplete="off">
+          <div className="auth-autofill-decoys" aria-hidden="true">
+            <input type="text" name="username" autoComplete="username" tabIndex={-1} defaultValue="" />
+            <input type="password" name="password" autoComplete="current-password" tabIndex={-1} defaultValue="" />
+          </div>
           <div className="form-header">
             <h1>{isMfaStep ? 'Verify sign in' : 'Sign in'}</h1>
           </div>
 
-          <Field label="Email" type="email" name="email" value={authForm.email} onChange={setForm(setAuthForm)} required disabled={isMfaStep} />
+          <Field label="Email" type="email" name="email" value={authForm.email} onChange={setForm(setAuthForm)} autoComplete="username" required disabled={isMfaStep} />
           {isMfaStep ? (
             <>
               <Field label="Authenticator Code" name="mfa_code" value={authForm.mfa_code} onChange={setForm(setAuthForm)} inputMode="numeric" autoComplete="one-time-code" required={!authForm.recovery_code} />
@@ -3464,7 +3497,18 @@ function AuthScreen({ brandName, authForm, setAuthForm, handleAuth, mfaChallenge
             <label className="field password-field">
               <span>Password</span>
               <div className="password-input-wrap">
-                <input type={showPassword ? 'text' : 'password'} name="password" value={authForm.password} onChange={setForm(setAuthForm)} required />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  name={loginPasswordFieldName}
+                  value={authForm.password}
+                  onChange={(event) => setAuthForm((current) => ({ ...current, password: event.target.value }))}
+                  autoComplete="new-password"
+                  data-1p-ignore="true"
+                  data-lpignore="true"
+                  data-bwignore="true"
+                  spellCheck="false"
+                  required
+                />
                 <button
                   type="button"
                   className="password-toggle"
@@ -3498,10 +3542,12 @@ function AuthScreen({ brandName, authForm, setAuthForm, handleAuth, mfaChallenge
 }
 
 function AccountSecurityPanel({
+  currentUser,
   accountSecurity = emptyAccountSecurity,
   mfaSetup,
-  securityForms = { current_password: '', mfa_code: '', recovery_code: '' },
+  securityForms = emptySecurityForms,
   setSecurityForm,
+  changePassword,
   startMfaSetup,
   enableMfa,
   disableMfa,
@@ -3509,15 +3555,48 @@ function AccountSecurityPanel({
 }) {
   const mfaStatus = accountSecurity?.mfa || emptyAccountSecurity.mfa
   const recoveryCodes = mfaSetup?.recovery_codes || []
+  const fieldNames = useMemo(() => {
+    const suffix = Math.random().toString(36).slice(2)
+
+    return {
+      current: `nb-current-${suffix}`,
+      password: `nb-new-${suffix}`,
+      confirmation: `nb-confirm-${suffix}`,
+    }
+  }, [])
+  const setSecurityField = (field) => (event) => setSecurityForm?.({ target: { name: field, value: event.target.value } })
+  const passwordInputSecurityProps = {
+    autoComplete: 'off',
+    'data-1p-ignore': 'true',
+    'data-lpignore': 'true',
+    'data-bwignore': 'true',
+    spellCheck: 'false',
+  }
 
   return (
     <section className="panel security-mfa-panel">
       <PanelTitle icon={ShieldCheck} title="My Account Protection" />
+      {currentUser?.must_change_password && (
+        <p className="security-warning">Change the temporary password before continuing with sensitive work.</p>
+      )}
       <div className="security-status-row">
+        <Metric label="Password" value={currentUser?.must_change_password ? 'Change required' : 'Active'} />
         <Metric label="Multi-factor" value={mfaStatus.enabled ? 'Enabled' : 'Disabled'} />
         <Metric label="Recovery Codes" value={mfaStatus.recovery_codes_remaining ?? 0} />
         <Metric label="Last Verified" value={mfaStatus.last_used_at ? shortDate(mfaStatus.last_used_at) : 'Not recorded'} />
       </div>
+
+      {changePassword && (
+        <form className="form-grid two" onSubmit={changePassword} autoComplete="off">
+          <Field label="Current Password" type="password" name={fieldNames.current} value={securityForms.current_password} onChange={setSecurityField('current_password')} required {...passwordInputSecurityProps} />
+          <Field label="New Password" type="password" name={fieldNames.password} value={securityForms.password} onChange={setSecurityField('password')} required {...passwordInputSecurityProps} />
+          <Field label="Confirm New Password" type="password" name={fieldNames.confirmation} value={securityForms.password_confirmation} onChange={setSecurityField('password_confirmation')} required {...passwordInputSecurityProps} />
+          <button type="submit" className="primary-action">
+            <CheckCircle2 size={17} />
+            Change password
+          </button>
+        </form>
+      )}
 
       {recoveryCodes.length > 0 && (
         <div className="mfa-recovery-block">
@@ -3529,8 +3608,8 @@ function AccountSecurityPanel({
       )}
 
       {!mfaStatus.enabled && !mfaSetup && (
-        <form className="form-grid two" onSubmit={startMfaSetup}>
-          <Field label="Current Password" type="password" name="current_password" value={securityForms.current_password} onChange={setSecurityForm} required />
+        <form className="form-grid two" onSubmit={startMfaSetup} autoComplete="off">
+          <Field label="Current Password" type="password" name={fieldNames.current} value={securityForms.current_password} onChange={setSecurityField('current_password')} required {...passwordInputSecurityProps} />
           <button type="submit" className="primary-action">
             <ShieldCheck size={17} />
             Start MFA setup
@@ -3543,8 +3622,8 @@ function AccountSecurityPanel({
           {mfaSetup.secret && (
             <Field className="span-2" label="Authenticator Secret" name="mfa_secret" value={mfaSetup.secret} readOnly />
           )}
-          <form className="form-grid two" onSubmit={enableMfa}>
-            <Field label="Current Password" type="password" name="current_password" value={securityForms.current_password} onChange={setSecurityForm} required />
+          <form className="form-grid two" onSubmit={enableMfa} autoComplete="off">
+            <Field label="Current Password" type="password" name={fieldNames.current} value={securityForms.current_password} onChange={setSecurityField('current_password')} required {...passwordInputSecurityProps} />
             <Field label="Authenticator Code" name="mfa_code" value={securityForms.mfa_code} onChange={setSecurityForm} inputMode="numeric" autoComplete="one-time-code" required />
             <button type="submit" className="primary-action">
               <CheckCircle2 size={17} />
@@ -3556,8 +3635,8 @@ function AccountSecurityPanel({
 
       {mfaStatus.enabled && (
         <div className="security-mfa-actions">
-          <form className="form-grid two" onSubmit={regenerateMfaRecoveryCodes}>
-            <Field label="Current Password" type="password" name="current_password" value={securityForms.current_password} onChange={setSecurityForm} required />
+          <form className="form-grid two" onSubmit={regenerateMfaRecoveryCodes} autoComplete="off">
+            <Field label="Current Password" type="password" name={fieldNames.current} value={securityForms.current_password} onChange={setSecurityField('current_password')} required {...passwordInputSecurityProps} />
             <Field label="Authenticator Code" name="mfa_code" value={securityForms.mfa_code} onChange={setSecurityForm} inputMode="numeric" autoComplete="one-time-code" required />
             <button type="submit" className="primary-action">
               <RefreshCcw size={17} />
@@ -3565,8 +3644,8 @@ function AccountSecurityPanel({
             </button>
           </form>
 
-          <form className="form-grid two" onSubmit={disableMfa}>
-            <Field label="Current Password" type="password" name="current_password" value={securityForms.current_password} onChange={setSecurityForm} required />
+          <form className="form-grid two" onSubmit={disableMfa} autoComplete="off">
+            <Field label="Current Password" type="password" name={fieldNames.current} value={securityForms.current_password} onChange={setSecurityField('current_password')} required {...passwordInputSecurityProps} />
             <Field label="Authenticator Code" name="mfa_code" value={securityForms.mfa_code} onChange={setSecurityForm} inputMode="numeric" autoComplete="one-time-code" />
             <Field label="Recovery Code" name="recovery_code" value={securityForms.recovery_code} onChange={setSecurityForm} autoComplete="one-time-code" />
             <button type="submit" className="table-action danger">
@@ -3605,6 +3684,7 @@ function PlatformAdminView({
   saveStaffUser,
   deleteStaffUser,
   saveProfile,
+  changePassword,
   activeTab = 'executive',
   setActiveLayer,
   setActiveTab,
@@ -4832,7 +4912,7 @@ function PlatformAdminView({
                 <Field label="Primary Admin" name="primary_contact_name" value={forms.company.primary_contact_name} onChange={setPlatformForm('company')} autoComplete="off" required />
                 <Field label="Admin Email" type="email" name="primary_contact_email" value={forms.company.primary_contact_email} onChange={setPlatformForm('company')} autoComplete={`section-provisioning-${wizardInstance} new-password`} required />
                 <Field label="Admin Phone" name="primary_contact_phone" value={forms.company.primary_contact_phone} onChange={setPlatformForm('company')} inputMode="tel" autoComplete="off" />
-                <Field label="Temporary Password" type="password" name="admin_password" value={forms.company.admin_password} onChange={setPlatformForm('company')} placeholder="Auto-generated if blank" autoComplete={`section-provisioning-${wizardInstance} new-password`} />
+                <Field label="Temporary Password" type="password" name={`admin_password_${wizardInstance}`} value={forms.company.admin_password} onChange={(event) => setPlatformForm('company')({ target: { name: 'admin_password', value: event.target.value } })} placeholder="Auto-generated if blank" autoComplete="off" data-1p-ignore="true" data-lpignore="true" data-bwignore="true" spellCheck="false" />
               </>
             )}
             {wizardStep === 6 && (
@@ -5450,10 +5530,12 @@ function PlatformAdminView({
         </div>
         <div className="grid-main">
           <AccountSecurityPanel
+            currentUser={currentUser}
             accountSecurity={accountSecurity}
             mfaSetup={mfaSetup}
             securityForms={securityForms}
             setSecurityForm={setSecurityForm}
+            changePassword={changePassword}
             startMfaSetup={startMfaSetup}
             enableMfa={enableMfa}
             disableMfa={disableMfa}
@@ -5508,8 +5590,8 @@ function PlatformAdminView({
           <PanelTitle icon={Users} title={isEditingStaff ? 'Edit Cloud Console User' : 'Create Cloud Console User'} />
           <form className="form-grid two" onSubmit={saveStaffUser}>
             <Field label="Name" name="name" value={forms.staff.name} onChange={setPlatformForm('staff')} required />
-            <Field label="Email" type="email" name="email" value={forms.staff.email} onChange={setPlatformForm('staff')} required />
-            <Field label="Temporary Password" type="password" name="password" value={forms.staff.password} onChange={setPlatformForm('staff')} required={!isEditingStaff} placeholder={isEditingStaff ? 'Leave blank to keep current' : 'Enter a secure temporary password'} />
+            <Field label="Email" type="email" name="cloud_console_user_email" value={forms.staff.email} onChange={(event) => setPlatformForm('staff')({ target: { name: 'email', value: event.target.value } })} autoComplete="off" data-1p-ignore="true" data-lpignore="true" data-bwignore="true" required />
+            <Field label="Temporary Password" type="password" name="cloud_console_user_secret" value={forms.staff.password} onChange={(event) => setPlatformForm('staff')({ target: { name: 'password', value: event.target.value } })} required={!isEditingStaff} placeholder={isEditingStaff ? 'Leave blank to keep current' : 'Enter a secure temporary password'} autoComplete="off" data-1p-ignore="true" data-lpignore="true" data-bwignore="true" spellCheck="false" />
             <Field label="Phone" name="phone" value={forms.staff.phone} onChange={setPlatformForm('staff')} />
             <Field label="Job Title" name="job_title" value={forms.staff.job_title} onChange={setPlatformForm('staff')} />
             <Select label="Status" name="status" value={forms.staff.status} onChange={setPlatformForm('staff')}>
@@ -5547,9 +5629,9 @@ function PlatformAdminView({
             <Field label="Email" type="email" name="email" value={forms.profile.email} onChange={setPlatformForm('profile')} required />
             <Field label="Phone" name="phone" value={forms.profile.phone} onChange={setPlatformForm('profile')} />
             <Field label="Job Title" name="job_title" value={forms.profile.job_title} onChange={setPlatformForm('profile')} />
-            <Field label="Current Password" type="password" name="current_password" value={forms.profile.current_password} onChange={setPlatformForm('profile')} placeholder="Required for email or password changes" />
-            <Field label="New Password" type="password" name="password" value={forms.profile.password} onChange={setPlatformForm('profile')} />
-            <Field label="Confirm New Password" type="password" name="password_confirmation" value={forms.profile.password_confirmation} onChange={setPlatformForm('profile')} />
+            <Field label="Current Password" type="password" name="cloud_profile_current_secret" value={forms.profile.current_password} onChange={(event) => setPlatformForm('profile')({ target: { name: 'current_password', value: event.target.value } })} placeholder="Required for email or password changes" autoComplete="off" data-1p-ignore="true" data-lpignore="true" data-bwignore="true" spellCheck="false" />
+            <Field label="New Password" type="password" name="cloud_profile_new_secret" value={forms.profile.password} onChange={(event) => setPlatformForm('profile')({ target: { name: 'password', value: event.target.value } })} autoComplete="off" data-1p-ignore="true" data-lpignore="true" data-bwignore="true" spellCheck="false" />
+            <Field label="Confirm New Password" type="password" name="cloud_profile_confirm_secret" value={forms.profile.password_confirmation} onChange={(event) => setPlatformForm('profile')({ target: { name: 'password_confirmation', value: event.target.value } })} autoComplete="off" data-1p-ignore="true" data-lpignore="true" data-bwignore="true" spellCheck="false" />
             <button type="submit" className="primary-action">
               <CheckCircle2 size={17} />
               Save my login details
@@ -9007,7 +9089,6 @@ function ProcurementView({
   purchaseOrders,
   selectedProjectRequisitions,
   selectedProjectOrders,
-  currentUser,
   runAction,
 }) {
   const today = new Date().toISOString().slice(0, 10)
@@ -9061,7 +9142,8 @@ function ProcurementView({
   const [activeTab, setActiveTab] = useState('dashboard')
   const [materialForm, setMaterialForm] = useState({
     project_id: selectedProject?.id ? String(selectedProject.id) : String(projects[0]?.id || ''),
-    department: 'Construction',
+    requested_by_name: '',
+    department: '',
     priority: 'medium',
     required_by: '',
     delivery_location: '',
@@ -9332,7 +9414,8 @@ function ProcurementView({
 
     const payload = {
       title: materialForm.purpose || lines[0].description || 'Material request',
-      department: materialForm.department || 'Construction',
+      requested_by_name: materialForm.requested_by_name,
+      department: materialForm.department,
       priority: materialForm.priority || 'medium',
       required_by: materialForm.required_by || null,
       delivery_location: materialForm.delivery_location || '',
@@ -9360,6 +9443,8 @@ function ProcurementView({
 
     setMaterialForm((current) => ({
       ...current,
+      requested_by_name: '',
+      department: '',
       priority: 'medium',
       required_by: '',
       delivery_location: '',
@@ -9545,7 +9630,8 @@ function ProcurementView({
     setMaterialForm((current) => ({
       ...current,
       project_id: String(request.project_id || request.project?.id || current.project_id),
-      department: request.department || 'Construction',
+      requested_by_name: procurementRequesterName(request),
+      department: request.department || '',
       priority: request.priority || 'medium',
       required_by: dateInputValue(request.required_by),
       delivery_location: request.delivery_location || '',
@@ -9576,7 +9662,8 @@ function ProcurementView({
       () =>
         api.createRequisition(projectId, {
           title: `${request.title || request.purpose || request.requisition_number} copy`,
-          department: request.department || 'Construction',
+          requested_by_name: procurementRequesterName(request),
+          department: request.department || '',
           priority: request.priority || 'medium',
           required_by: request.required_by || null,
           delivery_location: request.delivery_location || '',
@@ -9619,7 +9706,8 @@ function ProcurementView({
   function exportRequestPdf(request) {
     downloadSimplePdf(`${request.requisition_number || `material-request-${request.id}`}.pdf`, request.requisition_number || 'Material Request', [
       ['Project', request.project?.name || ''],
-      ['Requested By', request.requested_by?.name || request.requestedBy?.name || ''],
+      ['Requested By', procurementRequesterName(request)],
+      ['Department', request.department || ''],
       ['Priority', labelize(request.priority || '')],
       ['Status', requestStatusLabel(request)],
       ['Value', money(request.grand_total || request.total_estimated)],
@@ -9700,8 +9788,8 @@ function ProcurementView({
                     </option>
                   ))}
                 </Select>
-                <Field label="Requested By" value={currentUser?.name || ''} disabled />
-                <Field label="Department" name="department" value={materialForm.department} onChange={setForm(setMaterialForm)} />
+                <Field label="Requested By" name="requested_by_name" value={materialForm.requested_by_name} onChange={setForm(setMaterialForm)} required />
+                <Field label="Department" name="department" value={materialForm.department} onChange={setForm(setMaterialForm)} required />
                 <Field label="Required Date" type="date" name="required_by" value={materialForm.required_by} onChange={setForm(setMaterialForm)} />
                 <Field label="Delivery Location" name="delivery_location" value={materialForm.delivery_location} onChange={setForm(setMaterialForm)} />
                 <div className="field span-2">
@@ -9795,6 +9883,7 @@ function ProcurementView({
                     className="table-action"
                     onClick={() => {
                       setEditingRequestId('')
+                      setMaterialForm((current) => ({ ...current, requested_by_name: '', department: '', required_by: '', delivery_location: '', purpose: '', discount_amount: 0, drawings: [], boq: [], specifications: [] }))
                       setMaterialLines([emptyMaterialLine()])
                     }}
                   >
@@ -9812,7 +9901,7 @@ function ProcurementView({
               rows={visibleRequisitions.map((item) => [
                 item.requisition_number,
                 item.project?.name || '',
-                item.requested_by?.name || item.requestedBy?.name || '',
+                procurementRequesterName(item),
                 <Badge key="priority" value={item.priority} />,
                 requestStatusLabel(item),
                 money(item.grand_total || item.total_estimated),
@@ -9872,7 +9961,7 @@ function ProcurementView({
               rows={pendingApprovals.map((item) => [
                 item.requisition_number,
                 item.project?.name || '',
-                item.requested_by?.name || item.requestedBy?.name || '',
+                procurementRequesterName(item),
                 <Badge key="priority" value={item.priority} />,
                 requestStatusLabel(item),
                 approvalProgressLabel(item),
@@ -9899,6 +9988,7 @@ function ProcurementView({
                 <div className="request-summary">
                   <strong>{selectedRequest.requisition_number}</strong>
                   <span>{selectedRequest.project?.name || ''}</span>
+                  <span>{procurementRequesterName(selectedRequest)}{selectedRequest.department ? ` - ${selectedRequest.department}` : ''}</span>
                   <span>{requestStatusLabel(selectedRequest)} - {approvalProgressLabel(selectedRequest)}</span>
                 </div>
                 <ApprovalWorkflowPanel workflow={selectedRequest.approval_workflow || []} />
@@ -11100,11 +11190,13 @@ function FinanceView({
   recordPayment,
   createExpense,
   createJournalEntry,
+  uploadFinanceWorkbook,
   runAction,
 }) {
   const openInvoices = (finance.invoices || []).filter((invoice) => invoice.status !== 'draft' && invoice.payment_status !== 'paid')
   const issuedInvoices = (finance.invoices || []).filter((invoice) => !['draft', 'void'].includes(invoice.status))
   const bankAccounts = finance.bank_accounts || []
+  const financeWorkbooks = finance.workbooks || []
   const accountRows = finance.chart_of_accounts?.accounts || []
   const ledgerRows = finance.general_ledger?.entries || []
   const payableInvoices = [
@@ -11127,6 +11219,7 @@ function FinanceView({
     ['cash-flow', 'Cash Flow', BarChart3],
     ['bank-accounts', 'Bank Accounts', WalletCards],
     ['bank-reconciliation', 'Bank Reconciliation', RefreshCcw],
+    ['workbooks', 'Workbook Imports', Upload],
     ['chart-of-accounts', 'Chart of Accounts', Layers3],
     ['general-ledger', 'General Ledger', FileText],
     ['journal-entries', 'Journal Entries', Send],
@@ -11162,6 +11255,10 @@ function FinanceView({
   const idOrNull = (value) => (value ? Number(value) : null)
   const num = (value) => Number(value || 0)
   const reportRows = (items = [], keys = []) => (items || []).map((item) => keys.map((key) => item?.[key] ?? ''))
+  const setWorkbookFile = (event) => {
+    const file = event.target.files?.[0] || null
+    setFinanceForms((current) => ({ ...current, workbook: { ...current.workbook, file } }))
+  }
 
   return (
     <section className="view-stack">
@@ -11469,6 +11566,63 @@ function FinanceView({
           <section className="panel">
             <PanelTitle icon={RefreshCcw} title="Reconciliations" />
             <DataTable columns={['Bank', 'Statement Date', 'Statement', 'System', 'Difference', 'Status']} rows={(finance.bank_reconciliations || []).map((item) => [item.bank_account?.account_name || '', shortDate(item.statement_date), money(item.statement_balance), money(item.system_balance), money(item.difference), <Badge key="status" value={item.status} />])} />
+          </section>
+        </div>
+      )}
+
+      {activeTab === 'workbooks' && (
+        <div className="grid-main">
+          <section className="panel">
+            <PanelTitle icon={Upload} title="Finance Workbook" />
+            <form className="form-grid two" onSubmit={uploadFinanceWorkbook}>
+              <Field label="Title" name="title" value={forms.workbook.title} onChange={setFinanceForm('workbook')} required />
+              <Select label="Workbook Type" name="workbook_type" value={forms.workbook.workbook_type} onChange={setFinanceForm('workbook')}>
+                <option value="general_finance">General finance</option>
+                <option value="bank_statement">Bank statement</option>
+                <option value="invoice_import">Invoice import</option>
+                <option value="expense_import">Expense import</option>
+                <option value="budget_import">Budget import</option>
+                <option value="journal_import">Journal import</option>
+                <option value="payroll_import">Payroll import</option>
+              </Select>
+              <Select label="Branch" name="branch_id" value={forms.workbook.branch_id} onChange={setFinanceForm('workbook')}>
+                <option value="">Default branch</option>
+                {branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}
+              </Select>
+              <Select label="Project" name="project_id" value={forms.workbook.project_id} onChange={setFinanceForm('workbook')}>
+                <option value="">Company finance library</option>
+                {projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
+              </Select>
+              <label className="field">
+                <span>Workbook File</span>
+                <input type="file" name="file" accept={financeWorkbookAccept} onChange={setWorkbookFile} required />
+                <small>Microsoft Excel (.xls, .xlsx, .xlsm) or CSV files up to 50 MB</small>
+              </label>
+              <TextArea className="span-2" label="Notes" name="description" value={forms.workbook.description} onChange={setFinanceForm('workbook')} />
+              <button type="submit" className="primary-action span-2"><Upload size={17} />Upload workbook</button>
+            </form>
+          </section>
+
+          <section className="panel">
+            <PanelTitle icon={FileText} title="Workbook Register" />
+            <DataTable
+              columns={['No.', 'Title', 'Folder', 'Project', 'File', 'Uploaded', 'Action']}
+              rows={financeWorkbooks.map((workbook) => [
+                workbook.document_number,
+                workbook.title,
+                workbook.folder || '',
+                workbook.project?.name || workbook.branch?.name || 'Company finance library',
+                workbook.original_filename || '',
+                shortDate(workbook.created_at),
+                workbook.file_path ? (
+                  <button key="download" type="button" className="table-action" onClick={() => runAction(() => api.downloadDocument(workbook.id, workbook.original_filename || workbook.title), 'Workbook download started.', { skipRefresh: true })}>
+                    Download
+                  </button>
+                ) : (
+                  ''
+                ),
+              ])}
+            />
           </section>
         </div>
       )}
@@ -13030,8 +13184,8 @@ function PeopleView({ branches, projects, suppliers, users, roles, currentUser, 
               <PanelTitle icon={Users} title="Users & Roles" />
               <form className="form-grid user-form" onSubmit={saveHrUser} autoComplete="off">
                 <Field label="Name" name="name" value={accessForms.user.name} onChange={setAccessFormValue('user')} required />
-                <Field label="Email" type="email" name="company_user_invite_email" value={accessForms.user.email} onChange={setAccessUserField('email')} autoComplete="new-password" data-1p-ignore="true" data-lpignore="true" required />
-                <Field label="Password" type="password" name="company_user_temporary_password" value={accessForms.user.password} onChange={setAccessUserField('password')} autoComplete="new-password" data-1p-ignore="true" data-lpignore="true" required={!isEditingHrUser} placeholder={isEditingHrUser ? 'Leave blank to keep current' : 'Enter a secure temporary password'} />
+                <Field label="Email" type="email" name="company_user_invite_email" value={accessForms.user.email} onChange={setAccessUserField('email')} autoComplete="off" data-1p-ignore="true" data-lpignore="true" data-bwignore="true" required />
+                <Field label="Password" type="password" name="company_user_temporary_password" value={accessForms.user.password} onChange={setAccessUserField('password')} autoComplete="off" data-1p-ignore="true" data-lpignore="true" data-bwignore="true" spellCheck="false" required={!isEditingHrUser} placeholder={isEditingHrUser ? 'Leave blank to keep current' : 'Enter a secure temporary password'} />
                 <Select label="Branch" name="branch_id" value={accessForms.user.branch_id} onChange={setAccessFormValue('user')}>
                   {branchOptions()}
                 </Select>
@@ -15132,6 +15286,11 @@ function DocumentsView({
               <option value="quality">Quality</option>
               <option value="safety">Safety</option>
               <option value="policy">Policy</option>
+              <option value="microsoft_excel">Microsoft Excel</option>
+              <option value="autocad">AutoCAD</option>
+              <option value="pdf_drawing">PDF Drawing</option>
+              <option value="csv_import">CSV Import</option>
+              <option value="finance_workbook">Finance Workbook</option>
             </Select>
             <Select label="Branch" name="branch_id" value={documentForm.branch_id || ''} onChange={setForm(setDocumentForm)}>
               <option value="">Default</option>
@@ -15158,7 +15317,8 @@ function DocumentsView({
             </Select>
             <label className="field">
               <span>File</span>
-              <input type="file" name="file" onChange={(event) => setDocumentForm((current) => ({ ...current, file: event.target.files[0] }))} />
+              <input type="file" name="file" accept={documentUploadAccept} onChange={(event) => setDocumentForm((current) => ({ ...current, file: event.target.files[0] }))} />
+              <small>PDF, Word, Microsoft Excel, CSV, AutoCAD DWG/DXF, or image files up to 50 MB</small>
             </label>
             <div className="row-actions span-2">
               <button type="submit" className="primary-action">
@@ -15197,7 +15357,8 @@ function DocumentsView({
             </Select>
             <label className="field">
               <span>File</span>
-              <input type="file" name="file" onChange={(event) => setDrawingForm((current) => ({ ...current, file: event.target.files[0] }))} />
+              <input type="file" name="file" accept={drawingUploadAccept} onChange={(event) => setDrawingForm((current) => ({ ...current, file: event.target.files[0] }))} />
+              <small>PDF drawing, DWG, or DXF up to 100 MB</small>
             </label>
             <button type="submit" className="primary-action span-2">
               <Upload size={17} />
@@ -15210,15 +15371,21 @@ function DocumentsView({
       <section className="panel">
         <PanelTitle icon={FileText} title="Document Repository" />
         <DataTable
-          columns={['No.', 'Title', 'Scope', 'Type', 'Version', 'Status', 'Actions']}
+          columns={['No.', 'Title', 'Scope', 'Type', 'Version', 'File', 'Status', 'Actions']}
           rows={documents.map((doc) => [
             doc.document_number,
             doc.title,
             labelize(doc.repository_scope),
             labelize(doc.document_type),
             `v${doc.version}`,
+            doc.original_filename || '',
             <Badge key="status" value={doc.status} />,
             <div key="actions" className="row-actions">
+              {doc.file_path && (
+                <button type="button" className="table-action" onClick={() => runAction(() => api.downloadDocument(doc.id, doc.original_filename || doc.title), 'Document download started.', { skipRefresh: true })}>
+                  Download
+                </button>
+              )}
               <button type="button" className="table-action" onClick={() => editDocument(doc)}>
                 Edit
               </button>
@@ -15245,7 +15412,7 @@ function DocumentsView({
           <Field label="Notes" name="notes" value={revisionForm.notes} onChange={setForm(setRevisionForm)} />
           <label className="field compact-file">
             <span>File</span>
-            <input type="file" name="file" onChange={(event) => setRevisionForm((current) => ({ ...current, file: event.target.files[0] }))} />
+            <input type="file" name="file" accept={drawingUploadAccept} onChange={(event) => setRevisionForm((current) => ({ ...current, file: event.target.files[0] }))} />
           </label>
           <button type="submit" className="icon-button solid" title="Issue revision">
             <Plus size={17} />
@@ -15253,25 +15420,33 @@ function DocumentsView({
         </form>
         <DataTable
           columns={['No.', 'Title', 'Discipline', 'Revision', 'Status', 'Action']}
-          rows={drawings.map((drawing) => [
-            drawing.drawing_number,
-            drawing.title,
-            labelize(drawing.discipline),
-            drawing.current_revision,
-            <Badge key="status" value={drawing.status} />,
-            drawing.status === 'issued_for_review' ? (
-              <button
-                key="approve"
-                type="button"
-                className="table-action"
-                onClick={() => runAction(() => api.transitionDrawing(drawing.id, 'approved_for_construction'), 'Drawing approved.')}
-              >
-                Approve
-              </button>
-            ) : (
-              ''
-            ),
-          ])}
+          rows={drawings.map((drawing) => {
+            const currentRevision = (drawing.revisions || []).find((revision) => revision.revision_code === drawing.current_revision) || (drawing.revisions || [])[0]
+
+            return [
+              drawing.drawing_number,
+              drawing.title,
+              labelize(drawing.discipline),
+              drawing.current_revision,
+              <Badge key="status" value={drawing.status} />,
+              <div key="actions" className="row-actions">
+                {currentRevision?.file_path && (
+                  <button type="button" className="table-action" onClick={() => runAction(() => api.downloadDrawingRevision(currentRevision.id, currentRevision.original_filename || drawing.title), 'Drawing download started.', { skipRefresh: true })}>
+                    Download
+                  </button>
+                )}
+                {drawing.status === 'issued_for_review' && (
+                  <button
+                    type="button"
+                    className="table-action"
+                    onClick={() => runAction(() => api.transitionDrawing(drawing.id, 'approved_for_construction'), 'Drawing approved.')}
+                  >
+                    Approve
+                  </button>
+                )}
+              </div>,
+            ]
+          })}
         />
       </section>
 
@@ -17243,6 +17418,7 @@ function AdminView({
   setSecurityForm,
   archiveCompany,
   startMfaSetup,
+  changePassword,
   enableMfa,
   disableMfa,
   regenerateMfaRecoveryCodes,
@@ -17537,10 +17713,12 @@ function AdminView({
       )}
 
       <AccountSecurityPanel
+        currentUser={currentUser}
         accountSecurity={accountSecurity}
         mfaSetup={mfaSetup}
         securityForms={securityForms}
         setSecurityForm={setSecurityForm}
+        changePassword={changePassword}
         startMfaSetup={startMfaSetup}
         enableMfa={enableMfa}
         disableMfa={disableMfa}
@@ -17712,8 +17890,8 @@ function AdminView({
           autoComplete="off"
         >
           <Field label="Name" name="name" value={forms.user.name} onChange={setAdminFormValue('user')} required />
-          <Field label="Email" type="email" name="company_user_invite_email" value={forms.user.email} onChange={setUserFormField('email')} autoComplete="new-password" data-1p-ignore="true" data-lpignore="true" required />
-          <Field label="Password" type="password" name="company_user_temporary_password" value={forms.user.password} onChange={setUserFormField('password')} autoComplete="new-password" data-1p-ignore="true" data-lpignore="true" required={!isEditingUser} placeholder={isEditingUser ? 'Leave blank to keep current' : 'Enter a secure temporary password'} />
+          <Field label="Email" type="email" name="company_user_invite_email" value={forms.user.email} onChange={setUserFormField('email')} autoComplete="off" data-1p-ignore="true" data-lpignore="true" data-bwignore="true" required />
+          <Field label="Password" type="password" name="company_user_temporary_password" value={forms.user.password} onChange={setUserFormField('password')} autoComplete="off" data-1p-ignore="true" data-lpignore="true" data-bwignore="true" spellCheck="false" required={!isEditingUser} placeholder={isEditingUser ? 'Leave blank to keep current' : 'Enter a secure temporary password'} />
           <Select label="Branch" name="branch_id" value={forms.user.branch_id} onChange={setAdminFormValue('user')}>
             {branches.map((branch) => (
               <option key={branch.id} value={branch.id}>
@@ -18091,6 +18269,10 @@ function requestStatusLabel(request = {}) {
   return request.approval_status_label || labelize(request.status || '')
 }
 
+function procurementRequesterName(request = {}) {
+  return request.requested_by_name || request.requested_by?.name || request.requestedBy?.name || ''
+}
+
 function approvalProgressLabel(request = {}) {
   return request.approval_progress?.label || `${(request.approval_workflow || []).filter((step) => step.status === 'approved').length}/${(request.approval_workflow || []).length || 0}`
 }
@@ -18248,7 +18430,7 @@ function accessibleNavItems(user, options = {}) {
   }
 
   return navItems
-    .filter((item) => options.cloudConsole ? item.id === 'platform' : item.id !== 'platform')
+    .filter((item) => options.cloudConsole ? ['platform', 'account'].includes(item.id) : item.id !== 'platform')
     .filter((item) => hasAnyPermission(user, item.permissions))
 }
 

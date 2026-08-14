@@ -32,6 +32,7 @@ Route::prefix('v1')->group(function (): void {
     Route::middleware(['auth:sanctum', 'throttle:api'])->group(function (): void {
         Route::get('auth/me', [AuthController::class, 'me']);
         Route::post('auth/logout', [AuthController::class, 'logout']);
+        Route::post('security/password', [AuthController::class, 'changePassword']);
         Route::get('security/mfa', [AuthController::class, 'mfaStatus']);
         Route::post('security/mfa/setup', [AuthController::class, 'setupMfa']);
         Route::post('security/mfa/enable', [AuthController::class, 'enableMfa']);
@@ -200,6 +201,7 @@ Route::prefix('v1')->group(function (): void {
         Route::post('finance/accounts', [FinanceController::class, 'storeAccount'])->middleware('permission:finance.manage');
         Route::post('finance/bank-accounts', [FinanceController::class, 'storeBankAccount'])->middleware('permission:finance.manage');
         Route::post('finance/bank-reconciliations', [FinanceController::class, 'storeBankReconciliation'])->middleware('permission:finance.manage');
+        Route::post('finance/workbooks', [FinanceController::class, 'storeWorkbook'])->middleware('permission:finance.manage');
         Route::post('finance/credit-notes', [FinanceController::class, 'storeCreditNote'])->middleware('permission:finance.manage');
         Route::post('finance/retentions', [FinanceController::class, 'storeRetention'])->middleware('permission:finance.manage');
         Route::post('finance/retentions/{retention}/release', [FinanceController::class, 'releaseRetention'])->middleware('permission:finance.manage');

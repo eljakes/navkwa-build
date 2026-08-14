@@ -34,6 +34,7 @@ class PurchaseRequisition extends Model
         'grand_total',
         'attachments',
         'justification',
+        'requested_by_name',
         'requested_by',
         'reviewed_by',
         'reviewed_at',
