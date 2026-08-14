@@ -241,6 +241,20 @@ $productionCheckCommand = function (): int {
         if ((string) config('queue.default') === 'sync') {
             $failures[] = 'QUEUE_CONNECTION must use a worker-backed queue, not sync.';
         }
+        if ($strict && $environment === 'production') {
+            if ((string) config('queue.default') !== 'redis') {
+                $failures[] = 'QUEUE_CONNECTION should be redis in production.';
+            }
+            if ((string) config('cache.default') !== 'redis') {
+                $failures[] = 'CACHE_STORE should be redis in production.';
+            }
+            if ((string) config('session.driver') !== 'redis') {
+                $failures[] = 'SESSION_DRIVER should be redis in production.';
+            }
+            if ($envValue('REDIS_HOST') === '') {
+                $failures[] = 'REDIS_HOST must be set for production Redis.';
+            }
+        }
         if ($envValue('BACKUP_DISK', config('backup.disk')) === '') {
             $failures[] = 'BACKUP_DISK must be set for scheduled backups.';
         }

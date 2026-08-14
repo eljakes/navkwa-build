@@ -14,7 +14,7 @@ set +a
 
 BACKUP_DIR="${BACKUP_DIR:-/var/backups/navkwabuild}"
 RETENTION_DAYS="${RETENTION_DAYS:-14}"
-APP_DIR="${APP_DIR:-/var/www/navkwabuild/current}"
+APP_DIR="${APP_DIR:-/var/www/navkwa-build/current}"
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 
 umask 077
