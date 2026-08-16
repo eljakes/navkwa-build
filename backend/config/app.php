@@ -54,7 +54,11 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
 
+    'frontend_url' => env('FRONTEND_URL'),
+
     'version' => env('APP_VERSION'),
+
+    'seed_development' => filter_var(env('NAVKWA_BUILD_SEED_DEVELOPMENT', false), FILTER_VALIDATE_BOOLEAN),
 
     /*
     |--------------------------------------------------------------------------

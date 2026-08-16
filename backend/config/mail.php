@@ -16,6 +16,8 @@ return [
 
     'default' => env('MAIL_MAILER', 'log'),
 
+    'smtp_host' => env('MAIL_HOST'),
+
     /*
     |--------------------------------------------------------------------------
     | Mailer Configurations

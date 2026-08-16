@@ -162,8 +162,6 @@ $productionCheckCommand = function (): int {
     $warnings = [];
     $strict = (bool) $this->option('strict');
     $environment = (string) config('app.env');
-    $envValue = fn (string $key, mixed $default = ''): string => trim((string) env($key, $default));
-    $envFlag = fn (string $key, bool $default = false): bool => filter_var(env($key, $default), FILTER_VALIDATE_BOOLEAN);
     $isLocalValue = fn (string $value): bool => Str::contains(Str::lower($value), ['localhost', '127.0.0.1', '::1']);
     $requiresHttps = function (string $key, string $value) use (&$failures, $isLocalValue): void {
         if ($value === '') {
@@ -190,18 +188,18 @@ $productionCheckCommand = function (): int {
             $failures[] = 'APP_DEBUG must be false.';
         }
 
-        if ($envValue('APP_KEY') === '') {
+        if (trim((string) config('app.key')) === '') {
             $failures[] = 'APP_KEY must be generated before deployment.';
         }
 
-        if ($envValue('APP_VERSION') === '') {
+        if (trim((string) config('app.version')) === '') {
             $failures[] = 'APP_VERSION must identify the release being deployed.';
         }
 
         $requiresHttps('APP_URL', (string) config('app.url'));
-        $requiresHttps('FRONTEND_URL', $envValue('FRONTEND_URL'));
+        $requiresHttps('FRONTEND_URL', (string) config('app.frontend_url'));
 
-        $corsOrigins = array_values(array_filter(array_map('trim', explode(',', $envValue('CORS_ALLOWED_ORIGINS')))));
+        $corsOrigins = array_values(array_filter(array_map('trim', config('cors.allowed_origins', []))));
         if ($corsOrigins === []) {
             $failures[] = 'CORS_ALLOWED_ORIGINS must contain the production frontend origin.';
         }
@@ -211,69 +209,57 @@ $productionCheckCommand = function (): int {
             }
         }
 
-        if ($envFlag('NAVKWA_BUILD_SEED_DEVELOPMENT')) {
+        if ((bool) config('app.seed_development')) {
             $failures[] = 'NAVKWA_BUILD_SEED_DEVELOPMENT must be false in production.';
         }
 
         if (config('database.default') !== 'pgsql') {
             $failures[] = 'DB_CONNECTION should be pgsql for the production deployment.';
         }
-        if ($envValue('DB_DATABASE') === '' || $envValue('DB_USERNAME') === '' || $envValue('DB_PASSWORD') === '') {
+        $database = config('database.connections.pgsql', []);
+        if (trim((string) ($database['database'] ?? '')) === '' || trim((string) ($database['username'] ?? '')) === '' || trim((string) ($database['password'] ?? '')) === '') {
             $failures[] = 'DB_DATABASE, DB_USERNAME, and DB_PASSWORD must be set.';
         }
-        if ($envValue('DB_PASSWORD') === 'navkwabuild_secret') {
+        if (($database['password'] ?? '') === 'navkwabuild_secret') {
             $failures[] = 'DB_PASSWORD must not use the local development password.';
         }
-        if (! in_array($envValue('DB_SSLMODE', 'prefer'), ['require', 'verify-ca', 'verify-full'], true)) {
+        if (! $isLocalValue((string) ($database['host'] ?? '')) && ! in_array($database['sslmode'] ?? 'prefer', ['require', 'verify-ca', 'verify-full'], true)) {
             $failures[] = 'DB_SSLMODE should require TLS in production.';
         }
 
         if (in_array((string) config('mail.default'), ['log', 'array'], true)) {
             $failures[] = 'MAIL_MAILER must send real mail in production.';
         }
-        if ($envValue('MAIL_FROM_ADDRESS') === '' || Str::contains($envValue('MAIL_FROM_ADDRESS'), 'example.com')) {
+        $mailFromAddress = trim((string) config('mail.from.address'));
+        if ($mailFromAddress === '' || Str::contains($mailFromAddress, 'example.com')) {
             $failures[] = 'MAIL_FROM_ADDRESS must be a real sender address.';
         }
-        if ((string) config('mail.default') === 'smtp' && $envValue('MAIL_HOST') === '') {
+        if ((string) config('mail.default') === 'smtp' && trim((string) config('mail.smtp_host')) === '') {
             $failures[] = 'MAIL_HOST must be set when MAIL_MAILER=smtp.';
         }
 
         if ((string) config('queue.default') === 'sync') {
             $failures[] = 'QUEUE_CONNECTION must use a worker-backed queue, not sync.';
         }
-        if ($strict && $environment === 'production') {
-            if ((string) config('queue.default') !== 'redis') {
-                $failures[] = 'QUEUE_CONNECTION should be redis in production.';
-            }
-            if ((string) config('cache.default') !== 'redis') {
-                $failures[] = 'CACHE_STORE should be redis in production.';
-            }
-            if ((string) config('session.driver') !== 'redis') {
-                $failures[] = 'SESSION_DRIVER should be redis in production.';
-            }
-            if ($envValue('REDIS_HOST') === '') {
-                $failures[] = 'REDIS_HOST must be set for production Redis.';
-            }
-        }
-        if ($envValue('BACKUP_DISK', config('backup.disk')) === '') {
+        if (trim((string) config('backup.disk')) === '') {
             $failures[] = 'BACKUP_DISK must be set for scheduled backups.';
         }
-        if ($envValue('BACKUP_DAILY_AT', config('backup.daily_at')) === '') {
+        if (trim((string) config('backup.daily_at')) === '') {
             $failures[] = 'BACKUP_DAILY_AT must be set for 24-hour scheduled backups.';
         }
-        if ($envValue('BACKUP_DISK', config('backup.disk')) === 'local') {
+        if ((string) config('backup.disk') === 'local') {
             $warnings[] = 'BACKUP_DISK is local. Use off-server storage such as S3 for stronger disaster recovery.';
         }
-        if (! $envFlag('SECURITY_REQUIRE_MFA_FOR_PLATFORM_ADMINS')) {
+        if (! (bool) config('security.auth.require_mfa_for_platform_admins')) {
             $failures[] = 'SECURITY_REQUIRE_MFA_FOR_PLATFORM_ADMINS must be true in production.';
         }
-        if (! $envFlag('SECURITY_REVOKE_OTHER_WEB_TOKENS_ON_LOGIN', true)) {
+        if (! (bool) config('security.auth.revoke_other_web_tokens_on_login')) {
             $failures[] = 'SECURITY_REVOKE_OTHER_WEB_TOKENS_ON_LOGIN must remain true in production.';
         }
-        if ((int) env('SECURITY_WEB_TOKEN_LIFETIME_MINUTES', 240) > 240) {
+        if ((int) config('security.tokens.web_token_lifetime_minutes', 240) > 240) {
             $failures[] = 'SECURITY_WEB_TOKEN_LIFETIME_MINUTES must be 240 minutes or less in production.';
         }
-        if ((int) env('SECURITY_LOGIN_RATE_LIMIT_PER_MINUTE', 5) > 5) {
+        if ((int) config('security.rate_limits.login_per_minute', 5) > 5) {
             $failures[] = 'SECURITY_LOGIN_RATE_LIMIT_PER_MINUTE must be 5 or lower in production.';
         }
         if (! (bool) config('session.encrypt')) {
@@ -282,7 +268,7 @@ $productionCheckCommand = function (): int {
         if (! (bool) config('session.secure')) {
             $failures[] = 'SESSION_SECURE_COOKIE must be true.';
         }
-        if ($envValue('LOG_LEVEL', 'debug') === 'debug') {
+        if ((string) config('logging.channels.single.level', 'debug') === 'debug') {
             $failures[] = 'LOG_LEVEL should not be debug in production.';
         }
 

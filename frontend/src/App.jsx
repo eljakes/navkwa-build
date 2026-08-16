@@ -984,6 +984,7 @@ function App() {
   const [reports, setReports] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
   const [themePreference, setThemePreference] = useState(() => readThemePreference())
 
   const [projectForm, setProjectForm] = useState(emptyProjectForm)
@@ -1333,11 +1334,13 @@ function App() {
 
   async function runAction(action, _successMessage, options = {}) {
     setError('')
+    setNotice('')
 
     try {
       const result = await action()
 
       if (options.skipRefresh) {
+        setNotice(_successMessage || '')
         return result
       }
 
@@ -1347,6 +1350,7 @@ function App() {
         await refreshWorkspace({ force: true })
       }
 
+      setNotice(_successMessage || '')
       return result
     } catch (err) {
       setError(validationSummary(err))
@@ -2358,9 +2362,11 @@ function App() {
     }
 
     const result = await runAction(() => api.createPlatformCompany(payload), 'Company provisioned.')
-    if (!result?.company?.id) return
+    if (result) {
+      setPlatformForms((current) => ({ ...current, company: emptyPlatformForms.company }))
+    }
 
-    setPlatformForms((current) => ({ ...current, company: emptyPlatformForms.company }))
+    return result
   }
 
   async function savePlatformCompanyAccount(event) {
@@ -3112,10 +3118,17 @@ function App() {
         </header>
 
         {error && (
-          <div className="workspace-error" role="alert">
+          <div className="workspace-feedback error" role="alert" aria-live="assertive">
             <AlertTriangle size={18} />
             <span>{error}</span>
-            <button type="button" className="table-action" onClick={() => setError('')}>Dismiss</button>
+            <button type="button" onClick={() => setError('')}>Dismiss</button>
+          </div>
+        )}
+        {!error && notice && (
+          <div className="workspace-feedback success" role="status" aria-live="polite">
+            <CheckCircle2 size={18} />
+            <span>{notice}</span>
+            <button type="button" onClick={() => setNotice('')}>Dismiss</button>
           </div>
         )}
 
@@ -3123,6 +3136,7 @@ function App() {
           <PlatformAdminView
             currentUser={user}
             platform={platformAdmin}
+            error={error}
             accountSecurity={accountSecurity}
             mfaSetup={mfaSetup}
             forms={platformForms}
@@ -3671,6 +3685,7 @@ function AccountSecurityPanel({
 function PlatformAdminView({
   currentUser,
   platform = emptyPlatformAdminData,
+  error = '',
   accountSecurity = emptyAccountSecurity,
   mfaSetup,
   forms,
@@ -3717,6 +3732,7 @@ function PlatformAdminView({
   const [wizardOpen, setWizardOpen] = useState(false)
   const [wizardStep, setWizardStep] = useState(1)
   const [wizardInstance, setWizardInstance] = useState(0)
+  const [provisioning, setProvisioning] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const companies = useMemo(() => platform.companies || [], [platform.companies])
   const archivedCompanies = useMemo(() => platform.archived_companies || [], [platform.archived_companies])
@@ -4864,6 +4880,21 @@ function PlatformAdminView({
       && forms.company.primary_contact_email?.trim(),
     )
 
+    async function provisionCompanyFromButton() {
+      if (wizardStep !== steps.length || !provisioningReady || provisioning) return
+
+      setProvisioning(true)
+      try {
+        const result = await createCompany()
+        if (result) {
+          setWizardOpen(false)
+          setWizardStep(1)
+        }
+      } finally {
+        setProvisioning(false)
+      }
+    }
+
     return (
       <section className="cloud-wizard">
         <div className="cloud-wizard-card">
@@ -4930,22 +4961,24 @@ function PlatformAdminView({
                 <Metric label="Company" value={forms.company.name || 'Not set'} />
                 <Metric label="Plan" value={selectedPlan()?.name || 'Not set'} />
                 <Metric label="Modules" value={(forms.company.enabled_feature_keys || []).filter((key) => key.startsWith('module.')).length} />
-                <Metric label="Admin" value={forms.company.primary_contact_email || 'Not set'} />
+                <Metric label="Admin" value={forms.company.primary_contact_name || 'Not set'} />
               </section>
             )}
+            {error && <p className="form-error span-2" role="alert" aria-live="assertive">{error}</p>}
             <div className="row-actions span-2">
-              <button type="button" className="table-action" disabled={wizardStep === 1} onClick={() => setWizardStep((current) => Math.max(1, current - 1))}>Back</button>
+              <button type="button" className="table-action" disabled={wizardStep === 1 || provisioning} onClick={() => setWizardStep((current) => Math.max(1, current - 1))}>Back</button>
               {wizardStep < steps.length ? (
                 <button type="button" className="primary-action" onClick={() => setWizardStep((current) => Math.min(steps.length, current + 1))}>Next</button>
               ) : (
                 <button
                   type="button"
                   className="primary-action"
-                  disabled={!provisioningReady}
+                  disabled={!provisioningReady || provisioning}
                   title={provisioningReady ? 'Provision Company' : 'Complete company and primary admin details first'}
-                  onClick={createCompany}
+                  onClick={provisionCompanyFromButton}
                 >
-                  <Plus size={17} />Provision Company
+                  {provisioning ? <RefreshCcw size={17} className="spin" /> : <Plus size={17} />}
+                  {provisioning ? 'Provisioning...' : 'Provision Company'}
                 </button>
               )}
             </div>
