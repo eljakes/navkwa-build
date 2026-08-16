@@ -117,11 +117,13 @@ class AuthController extends ApiController
 
         $this->ensureUserCanSignIn($user);
 
-        if ($this->requiresPlatformMfa($user) && ! $this->mfaIsEnabled($user)) {
-            throw ValidationException::withMessages([
-                'email' => ['Multi-factor authentication is required for Navkwa Build Cloud Console administrators before sign in is allowed.'],
-            ]);
-        }
+        // TEMPORARY: Disable MFA requirement until enrollment flow is completed.
+//
+// if ($this->requiresPlatformMfa($user) && ! $this->mfaIsEnabled($user)) {
+//     throw ValidationException::withMessages([
+//         'email' => ['Multi-factor authentication is required for Navkwa Build Cloud Console administrators before sign in is allowed.'],
+//     ]);
+// }
 
         if ($this->mfaIsEnabled($user)) {
             $user->forceFill([

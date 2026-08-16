@@ -1,0 +1,29 @@
+[90m= [39m[34;4mIlluminate\Database\Eloquent\Collection[39;24m {#8136
+    [34mall[39m: [
+      [34;4mApp\Models\PlatformSubscriptionPlan[39;24m {#8131
+        [34mid[39m: [35m1[39m,
+        [34mcode[39m: [32m"[39m[32mstarter[39m[32m"[39m,
+        [34mname[39m: [32m"[39m[32mStarter[39m[32m"[39m,
+      },
+      [34;4mApp\Models\PlatformSubscriptionPlan[39;24m {#8130
+        [34mid[39m: [35m2[39m,
+        [34mcode[39m: [32m"[39m[32mprofessional[39m[32m"[39m,
+        [34mname[39m: [32m"[39m[32mProfessional[39m[32m"[39m,
+      },
+      [34;4mApp\Models\PlatformSubscriptionPlan[39;24m {#8133
+        [34mid[39m: [35m3[39m,
+        [34mcode[39m: [32m"[39m[32mbusiness[39m[32m"[39m,
+        [34mname[39m: [32m"[39m[32mBusiness[39m[32m"[39m,
+      },
+      [34;4mApp\Models\PlatformSubscriptionPlan[39;24m {#8134
+        [34mid[39m: [35m4[39m,
+        [34mcode[39m: [32m"[39m[32menterprise[39m[32m"[39m,
+        [34mname[39m: [32m"[39m[32mEnterprise[39m[32m"[39m,
+      },
+      [34;4mApp\Models\PlatformSubscriptionPlan[39;24m {#8135
+        [34mid[39m: [35m5[39m,
+        [34mcode[39m: [32m"[39m[32mcustom[39m[32m"[39m,
+        [34mname[39m: [32m"[39m[32mCustom[39m[32m"[39m,
+      },
+    ],
+  }
