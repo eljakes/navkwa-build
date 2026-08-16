@@ -115,8 +115,8 @@ DB_PASSWORD=navkwabuild_secret
 - Start from `backend/.env.production.example` and `frontend/.env.production.example`; do not deploy the local `.env.example` values.
 - Hetzner deployment configs and scripts live in `deploy/hetzner/`; use `deploy/hetzner/PRODUCTION_MANUAL.md` as the go-live standard.
 - Current Hetzner production server is `navkwa-prod-01` at `49.12.103.75`.
-- For the initial Hetzner launch, use `https://app.navkwabuild.com` for the ERP, `https://app.navkwabuild.com/cloud-console` for Navkwa Build Cloud Console, and `/api/v1` for the Laravel API.
-- Set `APP_URL=https://app.navkwabuild.com`, `FRONTEND_URL=https://app.navkwabuild.com`, and `CORS_ALLOWED_ORIGINS=https://app.navkwabuild.com`.
+- For the initial Hetzner launch, use `https://app.navkwa.com` for the ERP, `https://app.navkwa.com/cloud-console` for Navkwa Build Cloud Console, and `/api/v1` for the Laravel API.
+- Set `APP_URL=https://app.navkwa.com`, `FRONTEND_URL=https://app.navkwa.com`, and `CORS_ALLOWED_ORIGINS=https://app.navkwa.com`.
 - Keep `VITE_API_URL` blank when the frontend and API are served from the same domain behind `/api/v1`; set it only for separate frontend/API domains.
 - Set `APP_ENV=production`, `APP_DEBUG=false`, a real `APP_KEY`, `APP_VERSION`, secure mail/storage credentials, and a production PostgreSQL database with TLS.
 - Keep `NAVKWA_BUILD_SEED_DEVELOPMENT=false` in production. Run `php artisan migrate --force`, not `migrate:fresh --seed`, on production data.
@@ -126,7 +126,7 @@ DB_PASSWORD=navkwabuild_secret
 - Run Supervisor queue workers for `QUEUE_CONNECTION=redis`, and monitor failed jobs.
 - Run Laravel's scheduler every minute, for example `* * * * * cd /var/www/navkwa-build/current/backend && php artisan schedule:run >> /dev/null 2>&1`. This triggers `php artisan navkwabuild:backup-daily` once every 24 hours.
 - Set `BACKUP_DISK`, `BACKUP_PATH`, and `BACKUP_DAILY_AT`. The default creates encrypted ERP tenant and Cloud Console backups at 02:00; use off-server storage such as S3 for stronger disaster recovery.
-- Create the first Navkwa Build Cloud Console administrator with `php artisan navkwabuild:platform-admin admin@navkwabuild.com --create`, then change the temporary password immediately and enable MFA.
+- Create the first Navkwa Build Cloud Console administrator with `php artisan navkwabuild:platform-admin admin@navkwa.com --create`, then change the temporary password immediately and enable MFA.
 - The frontend refreshes authenticated ERP data from Laravel every `VITE_LIVE_REFRESH_MS` milliseconds. Set it to `0` to disable polling when replacing it with websockets.
 
 ## Verification

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-DOMAIN="${DOMAIN:-https://app.navkwabuild.com}"
+DOMAIN="${DOMAIN:-https://app.navkwa.com}"
 APP_DIR="${APP_DIR:-/var/www/navkwa-build/current}"
 BACKEND_DIR="$APP_DIR/backend"
 

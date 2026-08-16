@@ -13,17 +13,17 @@ Current server:
 
 Primary domains:
 
-- Public website: `https://navkwabuild.com`
-- ERP: `https://app.navkwabuild.com`
-- Cloud Console: `https://app.navkwabuild.com/cloud-console`
-- API: `https://app.navkwabuild.com/api/v1`
+- Public website: `https://navkwa.com`
+- ERP: `https://app.navkwa.com`
+- Cloud Console: `https://app.navkwa.com/cloud-console`
+- API: `https://app.navkwa.com/api/v1`
 
 DNS records should point to the Hetzner public IP:
 
 ```text
 A      @      49.12.103.75
 A      app    49.12.103.75
-CNAME  www    navkwabuild.com
+CNAME  www    navkwa.com
 ```
 
 Read the full standard first:

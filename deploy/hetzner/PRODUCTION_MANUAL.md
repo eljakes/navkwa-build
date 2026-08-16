@@ -76,7 +76,7 @@ Recommended DNS records:
 ```text
 A      @      49.12.103.75
 A      app    49.12.103.75
-CNAME  www    navkwabuild.com
+CNAME  www    navkwa.com
 ```
 
 Why:
@@ -390,7 +390,7 @@ Verify:
 
 ```bash
 sudo nginx -t
-curl -I http://app.navkwabuild.com
+curl -I http://app.navkwa.com
 ```
 
 Troubleshoot:
@@ -444,9 +444,9 @@ Production `.env` must use real values:
 ```env
 APP_ENV=production
 APP_DEBUG=false
-APP_URL=https://app.navkwabuild.com
-FRONTEND_URL=https://app.navkwabuild.com
-CORS_ALLOWED_ORIGINS=https://app.navkwabuild.com
+APP_URL=https://app.navkwa.com
+FRONTEND_URL=https://app.navkwa.com
+CORS_ALLOWED_ORIGINS=https://app.navkwa.com
 NAVKWA_BUILD_SEED_DEVELOPMENT=false
 DB_CONNECTION=pgsql
 DB_HOST=127.0.0.1
@@ -463,7 +463,7 @@ MAIL_MAILER=smtp
 MAIL_HOST=<smtp-host>
 MAIL_USERNAME=<smtp-user>
 MAIL_PASSWORD=<smtp-password>
-MAIL_FROM_ADDRESS=no-reply@navkwabuild.com
+MAIL_FROM_ADDRESS=no-reply@navkwa.com
 SECURITY_REQUIRE_MFA_FOR_PLATFORM_ADMINS=true
 SESSION_ENCRYPT=true
 SESSION_SECURE_COOKIE=true
@@ -570,7 +570,7 @@ Issue TLS after DNS points to the server:
 
 ```bash
 sudo apt install -y certbot python3-certbot-nginx
-sudo certbot --nginx -d app.navkwabuild.com
+sudo certbot --nginx -d app.navkwa.com
 sudo certbot renew --dry-run
 ```
 
@@ -580,7 +580,7 @@ active.
 Verify:
 
 ```bash
-curl -I https://app.navkwabuild.com
+curl -I https://app.navkwa.com
 sudo certbot certificates
 ```
 

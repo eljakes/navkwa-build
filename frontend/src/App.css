@@ -382,6 +382,29 @@ textarea:focus-visible {
   gap: 8px;
 }
 
+.workspace-error {
+  min-height: 52px;
+  margin: -4px 0 18px;
+  padding: 12px 14px;
+  border: 1px solid rgba(195, 56, 47, 0.32);
+  border-radius: 8px;
+  background: rgba(195, 56, 47, 0.08);
+  color: var(--red);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.workspace-error span {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-weight: 760;
+}
+
+.workspace-error svg {
+  flex: 0 0 auto;
+}
+
 .cloud-app-topbar {
   border-color: rgba(255, 255, 255, 0.14);
   background: linear-gradient(135deg, #102033, #17485a);

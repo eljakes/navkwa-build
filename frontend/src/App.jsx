@@ -2357,7 +2357,9 @@ function App() {
       },
     }
 
-    await runAction(() => api.createPlatformCompany(payload), 'Company provisioned.')
+    const result = await runAction(() => api.createPlatformCompany(payload), 'Company provisioned.')
+    if (!result?.company?.id) return
+
     setPlatformForms((current) => ({ ...current, company: emptyPlatformForms.company }))
   }
 
@@ -3108,6 +3110,14 @@ function App() {
             </button>
           </div>
         </header>
+
+        {error && (
+          <div className="workspace-error" role="alert">
+            <AlertTriangle size={18} />
+            <span>{error}</span>
+            <button type="button" className="table-action" onClick={() => setError('')}>Dismiss</button>
+          </div>
+        )}
 
         {activeView === 'platform' && (
           <PlatformAdminView

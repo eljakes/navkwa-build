@@ -215,6 +215,8 @@ class PlatformAdminApiTest extends TestCase
 
     public function test_platform_admin_can_manage_navkwa_cloud_console_users_and_own_login_details(): void
     {
+        config(['security.auth.require_mfa_for_platform_admins' => false]);
+
         [$platformUser] = $this->userWithPermissions(['platform.manage']);
         Sanctum::actingAs($platformUser);
 
