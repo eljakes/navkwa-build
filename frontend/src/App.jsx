@@ -7982,6 +7982,7 @@ function ProjectsView({
   runAction,
 }) {
   const canAdminister = canAdministerRecords(currentUser)
+  const canManageProjects = hasAnyPermission(currentUser, ['projects.manage', 'settings.manage'])
   const [activeProjectSection, setActiveProjectSection] = useState('portfolio')
   const [activeWorkspaceTab, setActiveWorkspaceTab] = useState('overview')
   const [portfolioFilters, setPortfolioFilters] = useState({
@@ -8107,14 +8108,16 @@ function ProjectsView({
     )
   }
 
-  function archiveSelectedProject() {
-    if (!selectedProject || !window.confirm(`Archive ${selectedProject.name}? This removes it from active project registers.`)) {
+  function archiveProject(project = selectedProject) {
+    if (!project || !window.confirm(`Archive ${project.name}? This removes it from active project registers.`)) {
       return
     }
 
-    runAction(() => api.deleteProject(selectedProject.id), 'Project archived.').then(() => {
-      const nextProject = projects.find((project) => project.id !== selectedProject.id)
-      setSelectedProjectId(nextProject?.id || null)
+    runAction(() => api.deleteProject(project.id), 'Project archived.').then((result) => {
+      if (result && selectedProject?.id === project.id) {
+        const nextProject = projects.find((candidate) => candidate.id !== project.id)
+        setSelectedProjectId(nextProject?.id || null)
+      }
     })
   }
 
@@ -8383,7 +8386,10 @@ function ProjectsView({
             projectScheduleLabel(project),
             <Badge key="health" value={project.health_status} />,
             <Badge key="status" value={project.status} />,
-            <button key="open" type="button" className="table-action" onClick={() => openProjectWorkspace(project)}>Open</button>,
+            <div className="row-actions" key={`project-actions-${project.id}`}>
+              <button type="button" className="table-action" onClick={() => openProjectWorkspace(project)}>Open</button>
+              {canManageProjects && <button type="button" className="table-action danger" onClick={() => archiveProject(project)}>Archive</button>}
+            </div>,
           ])}
         />
       </section>
@@ -8545,6 +8551,14 @@ function ProjectsView({
             <Metric label="Forecast Final Cost" value={money(forecastFinalCost)} />
           </div>
         </header>
+
+        {canManageProjects && (
+          <div className="row-actions">
+            <button type="button" className="table-action danger" onClick={() => archiveProject(selectedProject)}>
+              <Archive size={16} />Archive project
+            </button>
+          </div>
+        )}
 
         <nav className="module-tabs project-workspace-tabs" aria-label="Project workspace">
           {workspaceTabs.map(([key, label, Icon]) => (
@@ -8960,7 +8974,7 @@ function ProjectsView({
             />
             <div className="row-actions span-2">
               <button type="submit" className="primary-action"><CheckCircle2 size={17} />Save project</button>
-              <button type="button" className="table-action danger" onClick={archiveSelectedProject}>Archive project</button>
+              <button type="button" className="table-action danger" onClick={() => archiveProject(selectedProject)}>Archive project</button>
             </div>
           </form>
         ) : (
@@ -9000,7 +9014,7 @@ function ProjectsView({
               project.name,
               projectClientName(project),
               shortDate(project.deleted_at),
-              canAdminister ? (
+              canManageProjects ? (
                 <div className="row-actions" key={`archived-${project.id}`}>
                   <button type="button" className="table-action" onClick={() => reinstateProject(project)}>Reinstate</button>
                   <button type="button" className="table-action danger" onClick={() => permanentlyDeleteProject(project)}>Delete permanently</button>
