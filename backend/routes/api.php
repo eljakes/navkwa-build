@@ -41,6 +41,8 @@ Route::prefix('v1')->group(function (): void {
             Route::get('work-items/{workItem}/attachments/{index}', [PortalExternalController::class, 'downloadAttachment']);
             Route::post('client-approvals/{approval}/review', [PortalExternalController::class, 'reviewApproval']);
             Route::post('messages', [PortalExternalController::class, 'storeMessage']);
+            Route::post('messages/read', [PortalExternalController::class, 'markMessagesRead']);
+            Route::get('messages/{portalMessage}/attachments/{index}', [PortalExternalController::class, 'downloadMessageAttachment']);
             Route::post('payments', [PortalExternalController::class, 'submitPayment']);
             Route::post('security/mfa/setup', [PortalExternalController::class, 'setupMfa']);
             Route::post('security/mfa/enable', [PortalExternalController::class, 'enableMfa']);
@@ -291,6 +293,8 @@ Route::prefix('v1')->group(function (): void {
         Route::post('portals/users/{portalUser}/invite', [PortalController::class, 'resendInvitation'])->middleware('permission:portals.manage');
         Route::patch('portals/users/{portalUser}/status', [PortalController::class, 'updatePortalUserStatus'])->middleware('permission:portals.manage');
         Route::post('portals/users/{portalUser}/messages', [PortalController::class, 'storeMessage'])->middleware('permission:portals.manage');
+        Route::post('portals/users/{portalUser}/messages/read', [PortalController::class, 'markMessagesRead'])->middleware('permission:portals.manage');
+        Route::get('portals/messages/{portalMessage}/attachments/{index}', [PortalController::class, 'downloadMessageAttachment'])->middleware('permission:portals.manage');
         Route::post('portals/payments/{payment}/review', [PortalController::class, 'reviewPayment'])->middleware('permission:portals.manage');
         Route::post('portals/users/{portalUser}/access', [PortalController::class, 'grantAccess'])->middleware('permission:portals.manage');
         Route::post('projects/{project}/client-approvals', [PortalController::class, 'storeClientApproval'])->middleware('permission:portals.manage');

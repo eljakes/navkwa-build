@@ -230,6 +230,28 @@ class PortalExternalController extends Controller
         return response()->json(['portal_message' => $message], 201);
     }
 
+    public function markMessagesRead(Request $request): JsonResponse
+    {
+        $user = $this->user($request);
+        $data = $request->validate(['project_id' => ['required', 'integer']]);
+        $this->access($user, $data['project_id'], ['view', 'comment', 'submit', 'approve', 'manage']);
+        PortalMessage::query()->where('portal_user_id', $user->id)->where('project_id', $data['project_id'])
+            ->whereNotNull('user_id')->whereNull('read_at')->update(['read_at' => now()]);
+
+        return response()->json(['message' => 'Conversation marked as read.']);
+    }
+
+    public function downloadMessageAttachment(Request $request, PortalMessage $portalMessage, int $index): StreamedResponse
+    {
+        $user = $this->user($request);
+        abort_unless((int) $portalMessage->portal_user_id === $user->id, 404);
+        $this->access($user, $portalMessage->project_id, ['view', 'comment', 'submit', 'approve', 'manage']);
+        $attachment = ($portalMessage->attachments ?? [])[$index] ?? null;
+        abort_unless($attachment && Storage::disk('local')->exists($attachment['path']), 404);
+
+        return Storage::disk('local')->download($attachment['path'], $attachment['name']);
+    }
+
     public function submitPayment(Request $request): JsonResponse
     {
         $user = $this->user($request);

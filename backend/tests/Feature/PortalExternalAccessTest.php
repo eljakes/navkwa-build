@@ -44,7 +44,7 @@ class PortalExternalAccessTest extends TestCase
     public function test_external_client_has_isolated_feature_scoped_workspace_and_actions(): void
     {
         Storage::fake('local');
-        [, $company, $branch] = $this->tenant('hortula');
+        [$employee, $company, $branch] = $this->tenant('hortula');
         [, $otherCompany, $otherBranch] = $this->tenant('other-builder');
         $project = $this->project($company, $branch, 'HOSP-001', 'Hospital');
         $otherProject = $this->project($otherCompany, $otherBranch, 'OTHER-001', 'Secret Project');
@@ -91,9 +91,23 @@ class PortalExternalAccessTest extends TestCase
             'project_id' => $project->id, 'item_type' => 'meeting_minutes', 'title' => 'Not enabled',
         ])->assertForbidden();
 
-        $this->withToken($bearer)->postJson('/api/v1/portal/messages', [
+        $externalMessage = $this->withToken($bearer)->postJson('/api/v1/portal/messages', [
             'project_id' => $project->id, 'message' => 'Please confirm receipt of the approval.',
-        ])->assertCreated();
+        ])->assertCreated()->json('portal_message');
+
+        Sanctum::actingAs($employee);
+        $this->getJson('/api/v1/portals')->assertOk()->assertJsonPath('summary.unread_messages', 1);
+        $this->postJson("/api/v1/portals/users/{$portalUser->id}/messages/read", ['project_id' => $project->id])->assertOk();
+        $this->assertDatabaseHas('portal_messages', ['id' => $externalMessage['id'], 'portal_user_id' => $portalUser->id]);
+        $teamReply = $this->post("/api/v1/portals/users/{$portalUser->id}/messages", [
+            'project_id' => $project->id, 'subject' => 'Receipt confirmed', 'message' => 'The project team received it.',
+            'file' => UploadedFile::fake()->create('confirmation.pdf', 10, 'application/pdf'),
+        ], ['Accept' => 'application/json'])->assertCreated()->json('portal_message');
+        $this->getJson("/api/v1/portals/messages/{$teamReply['id']}/attachments/0")->assertOk();
+
+        Sanctum::actingAs($portalUser->fresh(), ['portal']);
+        $this->postJson('/api/v1/portal/messages/read', ['project_id' => $project->id])->assertOk();
+        $this->getJson("/api/v1/portal/messages/{$teamReply['id']}/attachments/0")->assertOk();
         $this->withToken($bearer)->postJson('/api/v1/portal/payments', [
             'project_id' => $project->id, 'amount' => 5000, 'currency' => 'GHS',
             'payment_method' => 'bank_transfer', 'transaction_reference' => 'BANK-001',

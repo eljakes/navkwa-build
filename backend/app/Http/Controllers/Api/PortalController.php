@@ -22,8 +22,10 @@ use App\Models\SupplierInvoice;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class PortalController extends ApiController
 {
@@ -51,7 +53,7 @@ class PortalController extends ApiController
             'inspections' => Inspection::query()->forCompany($companyId)->with(['project:id,code,name'])->latest()->limit(80)->get(),
             'daily_reports' => FieldDailyReport::query()->forCompany($companyId)->with(['project:id,code,name'])->latest('report_date')->limit(80)->get(),
             'activity' => $this->portalActivity($workItems),
-            'messages' => PortalMessage::query()->forCompany($companyId)->with(['portalUser:id,name,email', 'project:id,name'])->latest()->limit(100)->get(),
+            'messages' => PortalMessage::query()->forCompany($companyId)->with(['portalUser:id,name,email,organization', 'project:id,name'])->latest()->limit(250)->get(),
             'payment_submissions' => PortalPaymentSubmission::query()->forCompany($companyId)->with(['portalUser:id,name,email', 'project:id,name', 'invoice:id,invoice_number'])->latest()->limit(100)->get(),
             'summary' => [
                 'active_users' => PortalUser::query()->forCompany($companyId)->where('status', 'active')->count(),
@@ -62,6 +64,7 @@ class PortalController extends ApiController
                 'overdue_items' => $workItems->filter(fn (PortalWorkItem $item): bool => $item->due_date && $item->due_date->isPast() && ! in_array($item->status, ['approved', 'closed', 'completed', 'paid', 'signed_off'], true))->count(),
                 'supplier_invoices' => SupplierInvoice::query()->forCompany($companyId)->whereNotIn('status', ['paid', 'rejected'])->count(),
                 'inspection_signoffs' => $workItems->where('item_type', 'inspection_signoff')->whereIn('status', ['submitted', 'in_review'])->count(),
+                'unread_messages' => PortalMessage::query()->forCompany($companyId)->whereNull('user_id')->whereNull('read_at')->count(),
             ],
         ]);
     }
@@ -158,9 +161,16 @@ class PortalController extends ApiController
             'project_id' => ['required', 'integer'],
             'subject' => ['nullable', 'string', 'max:255'],
             'message' => ['required', 'string', 'max:4000'],
+            'file' => ['nullable', 'file', 'max:102400'],
         ]);
         $access = $portalUser->accesses()->where('project_id', $data['project_id'])->firstOrFail();
         abort_unless((int) $access->company_id === $this->companyId($request), 404);
+        $attachments = $request->hasFile('file') ? [[
+            'name' => $request->file('file')->getClientOriginalName(),
+            'mime' => $request->file('file')->getMimeType(),
+            'size' => $request->file('file')->getSize(),
+            'path' => $request->file('file')->store("portal/{$portalUser->company_id}/{$data['project_id']}/messages", 'local'),
+        ]] : [];
         $message = PortalMessage::query()->create([
             'company_id' => $this->companyId($request),
             'portal_user_id' => $portalUser->id,
@@ -168,9 +178,31 @@ class PortalController extends ApiController
             'user_id' => $this->user($request)->id,
             'subject' => $data['subject'] ?? null,
             'message' => $data['message'],
+            'attachments' => $attachments,
         ]);
 
         return response()->json(['portal_message' => $message, 'message' => 'Reply sent to the portal user.'], 201);
+    }
+
+    public function markMessagesRead(Request $request, PortalUser $portalUser): JsonResponse
+    {
+        $this->assertTenant($request, $portalUser);
+        $data = $request->validate(['project_id' => ['required', 'integer']]);
+        $portalUser->accesses()->where('project_id', $data['project_id'])->firstOrFail();
+        PortalMessage::query()->forCompany($this->companyId($request))
+            ->where('portal_user_id', $portalUser->id)->where('project_id', $data['project_id'])
+            ->whereNull('user_id')->whereNull('read_at')->update(['read_at' => now()]);
+
+        return response()->json(['message' => 'Conversation marked as read.']);
+    }
+
+    public function downloadMessageAttachment(Request $request, PortalMessage $portalMessage, int $index): StreamedResponse
+    {
+        $this->assertTenant($request, $portalMessage);
+        $attachment = ($portalMessage->attachments ?? [])[$index] ?? null;
+        abort_unless($attachment && Storage::disk('local')->exists($attachment['path']), 404);
+
+        return Storage::disk('local')->download($attachment['path'], $attachment['name']);
     }
 
     public function grantAccess(Request $request, PortalUser $portalUser): JsonResponse

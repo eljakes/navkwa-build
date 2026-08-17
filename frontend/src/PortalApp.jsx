@@ -27,6 +27,7 @@ export default function PortalApp() {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState(false)
+  const sessionUserId = session?.portal_user?.id
 
   async function load() {
     try {
@@ -39,6 +40,13 @@ export default function PortalApp() {
   }
 
   useEffect(() => { if (portalToken()) load() }, [])
+  useEffect(() => {
+    if (!sessionUserId) return undefined
+    const refresh = () => { if (document.visibilityState === 'visible') load() }
+    const interval = window.setInterval(refresh, 10000)
+    window.addEventListener('focus', refresh)
+    return () => { window.clearInterval(interval); window.removeEventListener('focus', refresh) }
+  }, [sessionUserId])
 
   async function authenticate(event) {
     event.preventDefault()
@@ -131,8 +139,11 @@ function Messages({ data, projectId, act }) {
   const eligibleAccesses = (data.accesses || []).filter((access) => canAccess(access, 'comment'))
   const [selectedProjectId, setSelectedProjectId] = useState(eligibleAccesses[0]?.project_id || projectId)
   const [message, setMessage] = useState('')
-  const send = (event) => { event.preventDefault(); const body = new FormData(); body.append('project_id', selectedProjectId); body.append('message', message); act(() => portalApi.sendMessage(body), 'Message sent.'); setMessage('') }
-  return <div className="portal-stack"><Card title="Message the project team">{eligibleAccesses.length ? <form className="portal-form" onSubmit={send}><label>Project<select value={selectedProjectId} onChange={(event) => setSelectedProjectId(event.target.value)}>{eligibleAccesses.map((access) => <option key={access.id} value={access.project_id}>{access.project?.name}</option>)}</select></label><label>Message<textarea value={message} onChange={(e) => setMessage(e.target.value)} required /></label><button><Send size={16} />Send</button></form> : <p>Your access is read-only. Ask the project team to grant <strong>Comment</strong> access or higher before sending messages.</p>}</Card><Card title="Conversation"><div className="portal-thread">{(data.messages || []).map((item) => <article key={item.id}><strong>{item.user_id ? 'Project team' : data.portal_user.name}</strong><p>{item.message}</p><small>{new Date(item.created_at).toLocaleString()}</small></article>)}</div></Card></div>
+  const [file, setFile] = useState(null)
+  const conversation = (data.messages || []).filter((item) => String(item.project_id) === String(selectedProjectId)).reverse()
+  useEffect(() => { if (selectedProjectId) portalApi.markMessagesRead(selectedProjectId).catch(() => {}) }, [selectedProjectId, data.messages?.length])
+  const send = (event) => { event.preventDefault(); const body = new FormData(); body.append('project_id', selectedProjectId); body.append('message', message); if (file) body.append('file', file); act(() => portalApi.sendMessage(body), 'Message sent.'); setMessage(''); setFile(null) }
+  return <div className="portal-stack"><Card title="Message the project team">{eligibleAccesses.length ? <form className="portal-form" onSubmit={send}><label>Project<select value={selectedProjectId} onChange={(event) => setSelectedProjectId(event.target.value)}>{eligibleAccesses.map((access) => <option key={access.id} value={access.project_id}>{access.project?.name}</option>)}</select></label><label>Message<textarea value={message} onChange={(e) => setMessage(e.target.value)} required /></label><label>Attachment<input type="file" onChange={(event) => setFile(event.target.files?.[0] || null)} /></label><button><Send size={16} />Send</button></form> : <p>Your access is read-only. Ask the project team to grant <strong>Comment</strong> access or higher before sending messages.</p>}</Card><Card title="Conversation"><div className="portal-thread">{conversation.map((item) => <article key={item.id}><strong>{item.user_id ? 'Project team' : data.portal_user.name}</strong><p>{item.message}</p>{(item.attachments || []).map((attachment, index) => <button className="portal-link" type="button" key={`${item.id}-${index}`} onClick={() => portalApi.downloadMessageAttachment(item.id, index, attachment.name)}>Download {attachment.name}</button>)}<small>{new Date(item.created_at).toLocaleString()}{item.user_id ? (item.read_at ? ' · Read' : ' · Delivered') : ''}</small></article>)}</div></Card></div>
 }
 
 function Payments({ data, act }) {

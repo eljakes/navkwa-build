@@ -946,6 +946,7 @@ function App() {
   const refreshInFlight = useRef(false)
   const refreshWorkspaceRef = useRef(null)
   const refreshProjectRef = useRef(null)
+  const portalUnreadRef = useRef(null)
   const [authForm, setAuthForm] = useState({
     email: '',
     password: '',
@@ -1077,6 +1078,24 @@ function App() {
       document.removeEventListener('visibilitychange', refreshLiveData)
     }
   }, [currentUserId, selectedProjectId, tokenReady])
+
+  useEffect(() => {
+    if (!tokenReady || !currentUserId || !allowedNavItems.some((item) => item.id === 'portals')) return undefined
+    const refreshPortalInbox = async () => {
+      if (document.visibilityState !== 'visible') return
+      try { setPortals(await api.portals()) } catch { /* The main workspace error handling remains authoritative. */ }
+    }
+    const intervalId = window.setInterval(refreshPortalInbox, 10000)
+    return () => window.clearInterval(intervalId)
+  }, [allowedNavItems, currentUserId, tokenReady])
+
+  useEffect(() => {
+    const unread = Number(portals.summary?.unread_messages || 0)
+    if (portalUnreadRef.current !== null && unread > portalUnreadRef.current) {
+      setNotice(`${unread - portalUnreadRef.current} new portal message${unread - portalUnreadRef.current === 1 ? '' : 's'} received.`)
+    }
+    portalUnreadRef.current = unread
+  }, [portals.summary?.unread_messages])
 
   useEffect(() => {
     if (!tokenReady || !user || allowedNavItems.length === 0) {
@@ -3130,6 +3149,7 @@ function App() {
                 >
                   <Icon size={18} />
                   <span>{item.label}</span>
+                  {item.id === 'portals' && Number(portals.summary?.unread_messages || 0) > 0 && <b className="nav-unread-badge">{portals.summary.unread_messages}</b>}
                 </button>
 
                 {isCloudConsoleItem && activeView === 'platform' && cloudConsoleLayers.length > 0 && (
@@ -14849,6 +14869,8 @@ function PortalsView({
   const [activePortalTab, setActivePortalTab] = useState('overview')
   const [grantFeedback, setGrantFeedback] = useState('')
   const [grantBusy, setGrantBusy] = useState(false)
+  const [selectedConversationKey, setSelectedConversationKey] = useState('')
+  const [messageReply, setMessageReply] = useState({ subject: '', message: '', file: null })
   const workItems = portals.work_items || []
   const portalUsers = portals.portal_users || []
   const portalTypeConfig = {
@@ -14885,6 +14907,7 @@ function PortalsView({
   }
   const portalTabs = [
     ['overview', 'Overview', BarChart3],
+    ['inbox', `Inbox${portals.summary?.unread_messages ? ` (${portals.summary.unread_messages})` : ''}`, MessageSquare],
     ...Object.entries(portalTypeConfig).map(([key, config]) => [key, config.label.replace(' Portal', ''), Building2]),
     ['directory', 'Directory', Users],
     ['work_items', 'Work Items', ClipboardList],
@@ -14897,6 +14920,16 @@ function PortalsView({
   const usersFor = (type) => portalUsers.filter((portalUser) => portalUser.user_type === type)
   const selectedPortalUsers = usersFor(activeType)
   const workItemsFor = (type) => workItems.filter((item) => item.portal_type === type)
+  const conversations = [...(portals.messages || []).reduce((groups, message) => {
+    const key = `${message.portal_user_id}:${message.project_id}`
+    if (!groups.has(key)) groups.set(key, { key, portalUser: message.portal_user, project: message.project, messages: [], unread: 0, latest: message.created_at })
+    const conversation = groups.get(key)
+    conversation.messages.push(message)
+    if (!message.user_id && !message.read_at) conversation.unread += 1
+    if (new Date(message.created_at) > new Date(conversation.latest)) conversation.latest = message.created_at
+    return groups
+  }, new Map()).values()].sort((a, b) => new Date(b.latest) - new Date(a.latest))
+  const selectedConversation = conversations.find((conversation) => conversation.key === selectedConversationKey) || conversations[0]
   const submitAccessGrant = async (event) => {
     setGrantBusy(true)
     setGrantFeedback('')
@@ -14932,6 +14965,59 @@ function PortalsView({
         </button>
       </div>,
     ])
+
+  function openConversation(conversation) {
+    setSelectedConversationKey(conversation.key)
+    setActivePortalTab('inbox')
+    if (conversation.unread) {
+      runAction(() => api.markPortalMessagesRead(conversation.portalUser.id, conversation.project.id), '')
+    }
+  }
+
+  async function sendConversationReply(event) {
+    event.preventDefault()
+    if (!selectedConversation || !messageReply.message.trim()) return
+    const body = new FormData()
+    body.append('project_id', selectedConversation.project.id)
+    body.append('message', messageReply.message.trim())
+    if (messageReply.subject.trim()) body.append('subject', messageReply.subject.trim())
+    if (messageReply.file) body.append('file', messageReply.file)
+    const result = await runAction(() => api.sendPortalMessage(selectedConversation.portalUser.id, body), 'Reply sent to the portal user.')
+    if (result) setMessageReply({ subject: '', message: '', file: null })
+  }
+
+  function renderInbox() {
+    return <section className="portal-inbox">
+      <aside className="portal-conversation-list panel">
+        <PanelTitle icon={MessageSquare} title="Portal Inbox" />
+        {conversations.map((conversation) => <button type="button" key={conversation.key} className={selectedConversation?.key === conversation.key ? 'active' : ''} onClick={() => openConversation(conversation)}>
+          <span><strong>{conversation.portalUser?.name}</strong><small>{conversation.project?.name}</small></span>
+          {conversation.unread > 0 && <b>{conversation.unread}</b>}
+        </button>)}
+        {!conversations.length && <p>No portal conversations yet.</p>}
+      </aside>
+      <section className="panel portal-conversation">
+        {selectedConversation ? <>
+          <PanelTitle icon={MessageSquare} title={`${selectedConversation.portalUser?.name} · ${selectedConversation.project?.name}`} />
+          <div className="portal-message-thread">
+            {[...selectedConversation.messages].reverse().map((message) => <article key={message.id} className={message.user_id ? 'team' : 'external'}>
+              <strong>{message.user_id ? 'Project team' : message.portal_user?.name}</strong>
+              {message.subject && <small>{message.subject}</small>}
+              <p>{message.message}</p>
+              {(message.attachments || []).map((attachment, index) => <button type="button" className="table-action" key={`${message.id}-${index}`} onClick={() => api.downloadPortalMessageAttachment(message.id, index, attachment.name)}>Download {attachment.name}</button>)}
+              <time>{new Date(message.created_at).toLocaleString()}{message.user_id ? (message.read_at ? ' · Read' : ' · Delivered') : ''}</time>
+            </article>)}
+          </div>
+          <form className="portal-reply-form" onSubmit={sendConversationReply}>
+            <Field label="Subject" value={messageReply.subject} onChange={(event) => setMessageReply((current) => ({ ...current, subject: event.target.value }))} />
+            <TextArea label="Reply" value={messageReply.message} onChange={(event) => setMessageReply((current) => ({ ...current, message: event.target.value }))} rows={4} required />
+            <Field label="Attachment" type="file" onChange={(event) => setMessageReply((current) => ({ ...current, file: event.target.files?.[0] || null }))} />
+            <button type="submit" className="primary-action"><Send size={17} />Send reply</button>
+          </form>
+        </> : <p>Select a conversation to view and reply.</p>}
+      </section>
+    </section>
+  }
 
   function completionStatus(itemType) {
     if (itemType === 'invoice_submission' || itemType === 'payment_status_query') return 'paid'
@@ -15003,15 +15089,6 @@ function PortalsView({
   }
 
   function renderOverview() {
-    const replyToMessage = (message) => {
-      const reply = window.prompt(`Reply to ${message.portal_user?.name || 'portal user'}`)
-      if (!reply?.trim()) return
-      runAction(
-        () => api.sendPortalMessage(message.portal_user_id, { project_id: message.project_id, subject: message.subject ? `Re: ${message.subject}` : 'Project team reply', message: reply.trim() }),
-        'Reply sent to the portal user.',
-      )
-    }
-
     return (
       <>
         <div className="portal-role-grid">
@@ -15049,7 +15126,7 @@ function PortalsView({
                 message.project?.name || '',
                 message.message,
                 shortDate(message.created_at),
-                <button key={`reply-${message.id}`} type="button" className="table-action" onClick={() => replyToMessage(message)}>Reply</button>,
+                <button key={`reply-${message.id}`} type="button" className="table-action" onClick={() => openConversation(conversations.find((conversation) => conversation.key === `${message.portal_user_id}:${message.project_id}`))}>Open conversation</button>,
               ])}
             />
           </section>
@@ -15531,6 +15608,7 @@ function PortalsView({
       </nav>
 
       {activePortalTab === 'overview' && renderOverview()}
+      {activePortalTab === 'inbox' && renderInbox()}
       {activePortalTab === 'client' && (
         <>
           {renderLegacyForms('client')}

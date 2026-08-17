@@ -967,8 +967,15 @@ export const api = {
   sendPortalMessage: (portalUserId, payload) =>
     request(`/portals/users/${portalUserId}/messages`, {
       method: 'POST',
-      body: JSON.stringify(payload),
+      body: requestBody(payload),
     }),
+  markPortalMessagesRead: (portalUserId, projectId) =>
+    request(`/portals/users/${portalUserId}/messages/read`, {
+      method: 'POST',
+      body: JSON.stringify({ project_id: projectId }),
+    }),
+  downloadPortalMessageAttachment: (messageId, index, filename) =>
+    download(`/portals/messages/${messageId}/attachments/${index}`, filename),
   reviewPortalPayment: (paymentId, status) =>
     request(`/portals/payments/${paymentId}/review`, {
       method: 'POST',

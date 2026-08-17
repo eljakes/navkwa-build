@@ -29,6 +29,19 @@ async function call(path, options = {}) {
   return payload
 }
 
+async function download(path, filename) {
+  const response = await fetch(`${API_BASE}/portal${path}`, { headers: { Authorization: `Bearer ${portalToken()}` } })
+  if (!response.ok) throw new Error('The attachment could not be downloaded.')
+  const blobUrl = window.URL.createObjectURL(await response.blob())
+  const link = document.createElement('a')
+  link.href = blobUrl
+  link.download = filename || 'attachment'
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.URL.revokeObjectURL(blobUrl)
+}
+
 const json = (method, body) => ({ method, body: JSON.stringify(body) })
 
 export const portalApi = {
@@ -42,6 +55,8 @@ export const portalApi = {
   respondWorkItem: (id, body) => call(`/work-items/${id}/respond`, { method: 'POST', body }),
   reviewApproval: (id, body) => call(`/client-approvals/${id}/review`, json('POST', body)),
   sendMessage: (body) => call('/messages', { method: 'POST', body }),
+  markMessagesRead: (projectId) => call('/messages/read', json('POST', { project_id: projectId })),
+  downloadMessageAttachment: (messageId, index, filename) => download(`/messages/${messageId}/attachments/${index}`, filename),
   submitPayment: (body) => call('/payments', { method: 'POST', body }),
   setupMfa: () => call('/security/mfa/setup', { method: 'POST' }),
   enableMfa: (code) => call('/security/mfa/enable', json('POST', { code })),

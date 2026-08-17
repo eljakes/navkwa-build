@@ -219,6 +219,114 @@ textarea:focus-visible {
   gap: 6px;
 }
 
+.nav-unread-badge {
+  margin-left: auto;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  display: inline-grid;
+  place-items: center;
+  background: #dc2626;
+  color: #fff;
+  font-size: 11px;
+}
+
+.portal-inbox {
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+  gap: 18px;
+}
+
+.portal-conversation-list {
+  align-self: start;
+  display: grid;
+  gap: 8px;
+}
+
+.portal-conversation-list > button {
+  width: 100%;
+  border: 1px solid var(--border-color, #dfe6ef);
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
+  cursor: pointer;
+}
+
+.portal-conversation-list > button.active {
+  border-color: var(--accent, #2364d8);
+  background: color-mix(in srgb, var(--accent, #2364d8) 10%, transparent);
+}
+
+.portal-conversation-list span {
+  display: grid;
+  gap: 3px;
+}
+
+.portal-conversation-list small,
+.portal-message-thread time {
+  color: var(--muted, #68778a);
+}
+
+.portal-conversation-list b {
+  min-width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: #dc2626;
+  color: #fff;
+  font-size: 11px;
+}
+
+.portal-message-thread {
+  max-height: 520px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 2px 16px;
+}
+
+.portal-message-thread article {
+  max-width: 78%;
+  border: 1px solid var(--border-color, #dfe6ef);
+  border-radius: 12px;
+  padding: 12px;
+  display: grid;
+  gap: 6px;
+}
+
+.portal-message-thread article.team {
+  align-self: flex-end;
+  background: color-mix(in srgb, var(--accent, #2364d8) 10%, transparent);
+}
+
+.portal-message-thread article.external {
+  align-self: flex-start;
+}
+
+.portal-message-thread p {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.portal-reply-form {
+  border-top: 1px solid var(--border-color, #dfe6ef);
+  padding-top: 16px;
+  display: grid;
+  gap: 12px;
+}
+
+@media (max-width: 850px) {
+  .portal-inbox { grid-template-columns: 1fr; }
+}
+
 .sidebar-cloud-nav {
   margin: 2px 0 4px 18px;
   padding-left: 10px;
