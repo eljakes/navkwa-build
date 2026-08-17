@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Building2, ClipboardList, FolderKanban, LogOut, MessageSquare, Send, ShieldCheck, Upload, WalletCards } from 'lucide-react'
+import { Building2, CheckCheck, ClipboardList, Download, FileText, FolderKanban, LogOut, MessageSquare, Paperclip, Search, Send, ShieldCheck, Upload, WalletCards } from 'lucide-react'
 import { portalApi, portalToken } from './lib/portalApi'
 import './PortalApp.css'
 
@@ -99,10 +99,11 @@ function PortalWorkspace({ data, refresh, logout, error, setError, notice, setNo
   const user = data.portal_user
   const accesses = data.accesses || []
   const projectId = accesses[0]?.project_id || ''
+  const unreadMessages = (data.messages || []).filter((message) => message.user_id && !message.read_at).length
   const act = async (action, message) => { setError(''); setNotice(''); try { await action(); setNotice(message); await refresh() } catch (err) { setError(errorText(err)) } }
   return <div className="external-portal portal-shell">
     <aside><div className="portal-brand"><Building2 /><div><strong>{user.company?.name}</strong><small>{label(user.user_type)} Portal</small></div></div>
-      <nav>{[['overview', 'Overview', FolderKanban], ['work', 'Work items', ClipboardList], ['messages', 'Messages', MessageSquare], ['security', 'Security', ShieldCheck]].map(([key, text, Icon]) => <button className={tab === key ? 'active' : ''} onClick={() => setTab(key)} key={key}><Icon size={17} />{text}</button>)}</nav>
+      <nav>{[['overview', 'Overview', FolderKanban], ['work', 'Work items', ClipboardList], ['messages', 'Messages', MessageSquare], ['security', 'Security', ShieldCheck]].map(([key, text, Icon]) => <button className={tab === key ? 'active' : ''} onClick={() => setTab(key)} key={key}><Icon size={17} />{text}{key === 'messages' && unreadMessages > 0 && <b className="external-unread">{unreadMessages}</b>}</button>)}</nav>
       <button className="portal-signout" onClick={logout}><LogOut size={17} />Sign out</button>
     </aside>
     <main><header><div><small>Welcome, {user.name}</small><h1>{label(tab)}</h1></div><span className="portal-pill">{label(user.user_type)}</span></header>
@@ -138,12 +139,29 @@ function WorkItems({ data, projectId, act }) {
 function Messages({ data, projectId, act }) {
   const eligibleAccesses = (data.accesses || []).filter((access) => canAccess(access, 'comment'))
   const [selectedProjectId, setSelectedProjectId] = useState(eligibleAccesses[0]?.project_id || projectId)
+  const [projectSearch, setProjectSearch] = useState('')
   const [message, setMessage] = useState('')
+  const [subject, setSubject] = useState('')
   const [file, setFile] = useState(null)
   const conversation = (data.messages || []).filter((item) => String(item.project_id) === String(selectedProjectId)).reverse()
+  const selectedAccess = eligibleAccesses.find((access) => String(access.project_id) === String(selectedProjectId))
+  const visibleAccesses = eligibleAccesses.filter((access) => access.project?.name?.toLowerCase().includes(projectSearch.toLowerCase()))
+  const initials = (name = '') => name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase() || 'NB'
   useEffect(() => { if (selectedProjectId) portalApi.markMessagesRead(selectedProjectId).catch(() => {}) }, [selectedProjectId, data.messages?.length])
-  const send = (event) => { event.preventDefault(); const body = new FormData(); body.append('project_id', selectedProjectId); body.append('message', message); if (file) body.append('file', file); act(() => portalApi.sendMessage(body), 'Message sent.'); setMessage(''); setFile(null) }
-  return <div className="portal-stack"><Card title="Message the project team">{eligibleAccesses.length ? <form className="portal-form" onSubmit={send}><label>Project<select value={selectedProjectId} onChange={(event) => setSelectedProjectId(event.target.value)}>{eligibleAccesses.map((access) => <option key={access.id} value={access.project_id}>{access.project?.name}</option>)}</select></label><label>Message<textarea value={message} onChange={(e) => setMessage(e.target.value)} required /></label><label>Attachment<input type="file" onChange={(event) => setFile(event.target.files?.[0] || null)} /></label><button><Send size={16} />Send</button></form> : <p>Your access is read-only. Ask the project team to grant <strong>Comment</strong> access or higher before sending messages.</p>}</Card><Card title="Conversation"><div className="portal-thread">{conversation.map((item) => <article key={item.id}><strong>{item.user_id ? 'Project team' : data.portal_user.name}</strong><p>{item.message}</p>{(item.attachments || []).map((attachment, index) => <button className="portal-link" type="button" key={`${item.id}-${index}`} onClick={() => portalApi.downloadMessageAttachment(item.id, index, attachment.name)}>Download {attachment.name}</button>)}<small>{new Date(item.created_at).toLocaleString()}{item.user_id ? (item.read_at ? ' · Read' : ' · Delivered') : ''}</small></article>)}</div></Card></div>
+  const send = (event) => { event.preventDefault(); const body = new FormData(); body.append('project_id', selectedProjectId); body.append('message', message); if (subject) body.append('subject', subject); if (file) body.append('file', file); act(() => portalApi.sendMessage(body), 'Message sent.'); setMessage(''); setSubject(''); setFile(null) }
+  if (!eligibleAccesses.length) return <Card title="Project messages"><div className="portal-message-empty"><MessageSquare size={34} /><strong>Messaging is not enabled</strong><p>Ask the project team to grant Comment access or higher.</p></div></Card>
+  return <section className="client-messenger">
+    <aside className="client-thread-list">
+      <div className="client-message-title"><span>Project communications</span><h2>Messages</h2></div>
+      <label className="client-message-search"><Search size={16} /><input value={projectSearch} onChange={(event) => setProjectSearch(event.target.value)} placeholder="Search projects" /></label>
+      <div>{visibleAccesses.map((access) => { const latest = (data.messages || []).find((item) => String(item.project_id) === String(access.project_id)); const unread = (data.messages || []).filter((item) => String(item.project_id) === String(access.project_id) && item.user_id && !item.read_at).length; return <button type="button" key={access.id} className={String(access.project_id) === String(selectedProjectId) ? 'active' : ''} onClick={() => setSelectedProjectId(access.project_id)}><i>{initials(access.project?.name)}</i><span><strong>{access.project?.name}</strong><small>{latest?.message || 'Start a secure conversation'}</small></span>{unread > 0 && <b>{unread}</b>}</button> })}</div>
+    </aside>
+    <section className="client-conversation">
+      <header><i>{initials(selectedAccess?.project?.name)}</i><div><h2>{selectedAccess?.project?.name}</h2><span><ShieldCheck size={14} /> Secure channel with Navkwa Build team</span></div></header>
+      <div className="client-message-stream">{conversation.length ? conversation.map((item) => <article key={item.id} className={item.user_id ? 'received' : 'sent'}><div><strong>{item.user_id ? 'Navkwa Build team' : 'You'}</strong>{item.subject && <em>{item.subject}</em>}<p>{item.message}</p>{(item.attachments || []).map((attachment, index) => <button type="button" className="client-attachment" key={`${item.id}-${index}`} onClick={() => portalApi.downloadMessageAttachment(item.id, index, attachment.name)}><FileText size={18} /><span>{attachment.name}<small>{attachment.size ? `${Math.ceil(attachment.size / 1024)} KB` : 'Attachment'}</small></span><Download size={16} /></button>)}</div><time>{new Date(item.created_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}{!item.user_id && <span><CheckCheck size={14} />{item.read_at ? 'Read' : 'Delivered'}</span>}</time></article>) : <div className="portal-message-empty"><MessageSquare size={34} /><strong>Start the conversation</strong><p>Messages are securely shared with the project team.</p></div>}</div>
+      <form className="client-message-composer" onSubmit={send}><input aria-label="Subject" placeholder="Subject (optional)" value={subject} onChange={(event) => setSubject(event.target.value)} /><textarea aria-label="Message" placeholder="Write your message…" value={message} onChange={(event) => setMessage(event.target.value)} required /><footer><label><Paperclip size={17} />{file?.name || 'Attach file'}<input type="file" onChange={(event) => setFile(event.target.files?.[0] || null)} /></label><small>Secure · Up to 100 MB</small><button>Send message <Send size={16} /></button></footer></form>
+    </section>
+  </section>
 }
 
 function Payments({ data, act }) {

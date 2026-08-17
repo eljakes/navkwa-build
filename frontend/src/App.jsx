@@ -7,6 +7,7 @@ import {
   Calculator,
   CalendarDays,
   CheckCircle2,
+  CheckCheck,
   ChevronRight,
   Clock3,
   ClipboardList,
@@ -23,8 +24,10 @@ import {
   MessageSquare,
   Moon,
   Package,
+  Paperclip,
   Plus,
   RefreshCcw,
+  Search,
   Send,
   Settings,
   ShieldCheck,
@@ -14871,6 +14874,7 @@ function PortalsView({
   const [grantBusy, setGrantBusy] = useState(false)
   const [selectedConversationKey, setSelectedConversationKey] = useState('')
   const [messageReply, setMessageReply] = useState({ subject: '', message: '', file: null })
+  const [conversationSearch, setConversationSearch] = useState('')
   const workItems = portals.work_items || []
   const portalUsers = portals.portal_users || []
   const portalTypeConfig = {
@@ -14929,7 +14933,9 @@ function PortalsView({
     if (new Date(message.created_at) > new Date(conversation.latest)) conversation.latest = message.created_at
     return groups
   }, new Map()).values()].sort((a, b) => new Date(b.latest) - new Date(a.latest))
-  const selectedConversation = conversations.find((conversation) => conversation.key === selectedConversationKey) || conversations[0]
+  const visibleConversations = conversations.filter((conversation) => `${conversation.portalUser?.name || ''} ${conversation.portalUser?.organization || ''} ${conversation.project?.name || ''}`.toLowerCase().includes(conversationSearch.toLowerCase()))
+  const selectedConversation = conversations.find((conversation) => conversation.key === selectedConversationKey) || visibleConversations[0] || conversations[0]
+  const initials = (name = '') => name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase() || 'P'
   const submitAccessGrant = async (event) => {
     setGrantBusy(true)
     setGrantFeedback('')
@@ -14989,32 +14995,32 @@ function PortalsView({
   function renderInbox() {
     return <section className="portal-inbox">
       <aside className="portal-conversation-list panel">
-        <PanelTitle icon={MessageSquare} title="Portal Inbox" />
-        {conversations.map((conversation) => <button type="button" key={conversation.key} className={selectedConversation?.key === conversation.key ? 'active' : ''} onClick={() => openConversation(conversation)}>
-          <span><strong>{conversation.portalUser?.name}</strong><small>{conversation.project?.name}</small></span>
+        <div className="portal-inbox-heading"><div><span>Communications</span><h2>Portal inbox</h2></div><em>{portals.summary?.unread_messages || 0} unread</em></div>
+        <label className="portal-inbox-search"><Search size={16} /><input value={conversationSearch} onChange={(event) => setConversationSearch(event.target.value)} placeholder="Search people or projects" /></label>
+        <div className="portal-conversation-scroll">{visibleConversations.map((conversation) => <button type="button" key={conversation.key} className={selectedConversation?.key === conversation.key ? 'active' : ''} onClick={() => openConversation(conversation)}>
+          <i className="portal-avatar">{initials(conversation.portalUser?.name)}</i>
+          <span><strong>{conversation.portalUser?.name}</strong><small>{conversation.project?.name}</small><q>{conversation.messages[0]?.message}</q></span>
+          <time>{new Date(conversation.latest).toLocaleDateString([], { month: 'short', day: 'numeric' })}</time>
           {conversation.unread > 0 && <b>{conversation.unread}</b>}
-        </button>)}
-        {!conversations.length && <p>No portal conversations yet.</p>}
+        </button>)}</div>
+        {!visibleConversations.length && <div className="portal-empty-state"><MessageSquare size={24} /><strong>No conversations found</strong><span>New portal messages will appear here.</span></div>}
       </aside>
       <section className="panel portal-conversation">
         {selectedConversation ? <>
-          <PanelTitle icon={MessageSquare} title={`${selectedConversation.portalUser?.name} · ${selectedConversation.project?.name}`} />
+          <header className="portal-conversation-header"><i className="portal-avatar large">{initials(selectedConversation.portalUser?.name)}</i><div><h2>{selectedConversation.portalUser?.name}</h2><span>{selectedConversation.portalUser?.organization || labelize(selectedConversation.portalUser?.user_type)} · {selectedConversation.project?.name}</span></div><div className="portal-secure-status"><ShieldCheck size={15} />Secure project channel</div></header>
           <div className="portal-message-thread">
             {[...selectedConversation.messages].reverse().map((message) => <article key={message.id} className={message.user_id ? 'team' : 'external'}>
-              <strong>{message.user_id ? 'Project team' : message.portal_user?.name}</strong>
-              {message.subject && <small>{message.subject}</small>}
-              <p>{message.message}</p>
-              {(message.attachments || []).map((attachment, index) => <button type="button" className="table-action" key={`${message.id}-${index}`} onClick={() => api.downloadPortalMessageAttachment(message.id, index, attachment.name)}>Download {attachment.name}</button>)}
-              <time>{new Date(message.created_at).toLocaleString()}{message.user_id ? (message.read_at ? ' · Read' : ' · Delivered') : ''}</time>
+              <div className="portal-bubble"><strong>{message.user_id ? 'Navkwa Build team' : message.portal_user?.name}</strong>{message.subject && <small>{message.subject}</small>}<p>{message.message}</p>
+              {(message.attachments || []).map((attachment, index) => <button type="button" className="portal-attachment" key={`${message.id}-${index}`} onClick={() => api.downloadPortalMessageAttachment(message.id, index, attachment.name)}><FileText size={18} /><span>{attachment.name}<small>{attachment.size ? `${Math.ceil(attachment.size / 1024)} KB` : 'Attachment'}</small></span><Download size={16} /></button>)}</div>
+              <time>{new Date(message.created_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}{message.user_id && <span><CheckCheck size={14} />{message.read_at ? 'Read' : 'Delivered'}</span>}</time>
             </article>)}
           </div>
           <form className="portal-reply-form" onSubmit={sendConversationReply}>
-            <Field label="Subject" value={messageReply.subject} onChange={(event) => setMessageReply((current) => ({ ...current, subject: event.target.value }))} />
-            <TextArea label="Reply" value={messageReply.message} onChange={(event) => setMessageReply((current) => ({ ...current, message: event.target.value }))} rows={4} required />
-            <Field label="Attachment" type="file" onChange={(event) => setMessageReply((current) => ({ ...current, file: event.target.files?.[0] || null }))} />
-            <button type="submit" className="primary-action"><Send size={17} />Send reply</button>
+            <input className="portal-subject-input" aria-label="Subject" placeholder="Subject (optional)" value={messageReply.subject} onChange={(event) => setMessageReply((current) => ({ ...current, subject: event.target.value }))} />
+            <textarea aria-label="Reply" placeholder={`Write a message to ${selectedConversation.portalUser?.name}…`} value={messageReply.message} onChange={(event) => setMessageReply((current) => ({ ...current, message: event.target.value }))} rows={3} required />
+            <footer><label className="portal-file-button"><Paperclip size={17} /><span>{messageReply.file?.name || 'Attach file'}</span><input type="file" onChange={(event) => setMessageReply((current) => ({ ...current, file: event.target.files?.[0] || null }))} /></label><small>Secure · Up to 100 MB</small><button type="submit" className="primary-action">Send message <Send size={17} /></button></footer>
           </form>
-        </> : <p>Select a conversation to view and reply.</p>}
+        </> : <div className="portal-empty-state conversation"><MessageSquare size={34} /><strong>Select a conversation</strong><span>Choose a client or project thread to begin.</span></div>}
       </section>
     </section>
   }
