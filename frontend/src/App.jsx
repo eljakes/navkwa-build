@@ -960,6 +960,7 @@ function App() {
   const [dashboard, setDashboard] = useState(null)
   const [organization, setOrganization] = useState(null)
   const [projects, setProjects] = useState([])
+  const [archivedProjects, setArchivedProjects] = useState([])
   const [selectedProjectId, setSelectedProjectId] = useState(null)
   const [selectedProject, setSelectedProject] = useState(null)
   const [requisitions, setRequisitions] = useState([])
@@ -1261,6 +1262,7 @@ function App() {
       setDashboard(dashboardData)
       setOrganization(orgData)
       setProjects(projectData.data || [])
+      setArchivedProjects(projectData.archived || [])
       setProcurement(procurementData)
       setRequisitions(procurementData.requisitions || [])
       setPurchaseOrders(procurementData.purchase_orders || [])
@@ -3294,6 +3296,7 @@ function App() {
             clients={clients}
             users={users}
             projects={projects}
+            archivedProjects={archivedProjects}
             selectedProject={selectedProject}
             setSelectedProjectId={setSelectedProjectId}
             projectForm={projectForm}
@@ -7961,6 +7964,7 @@ function ProjectsView({
   clients = emptyList,
   users = emptyList,
   projects,
+  archivedProjects = emptyList,
   selectedProject,
   setSelectedProjectId,
   projectForm,
@@ -8112,6 +8116,20 @@ function ProjectsView({
       const nextProject = projects.find((project) => project.id !== selectedProject.id)
       setSelectedProjectId(nextProject?.id || null)
     })
+  }
+
+  function reinstateProject(project) {
+    if (!window.confirm(`Reinstate ${project.name}? It will return to the active project register.`)) return
+
+    runAction(() => api.restoreProject(project.id), 'Project reinstated.').then((result) => {
+      if (result?.project?.id) setSelectedProjectId(result.project.id)
+    })
+  }
+
+  function permanentlyDeleteProject(project) {
+    if (!window.confirm(`Permanently delete ${project.name}? This will delete its related project records and cannot be undone.`)) return
+
+    runAction(() => api.forceDeleteProject(project.id), 'Project permanently deleted.')
   }
 
   function saveTask(event) {
@@ -8973,7 +8991,25 @@ function ProjectsView({
       {activeProjectSection === 'register' && <>{renderProjectFilters()}{renderProjectRegister(filteredProjects)}</>}
       {activeProjectSection === 'new' && renderNewProject()}
       {activeProjectSection === 'templates' && <section className="panel"><PanelTitle icon={Layers3} title="Project Templates" /><div className="empty-cell">No project templates configured yet.</div></section>}
-      {activeProjectSection === 'archived' && <section className="panel"><PanelTitle icon={Archive} title="Archived Projects" /><DataTable columns={['Project', 'Client', 'Status', 'Health']} rows={projects.filter((project) => ['closed', 'cancelled'].includes(project.status)).map((project) => [project.name, projectClientName(project), <Badge key="status" value={project.status} />, <Badge key="health" value={project.health_status} />])} /></section>}
+      {activeProjectSection === 'archived' && (
+        <section className="panel">
+          <PanelTitle icon={Archive} title="Archived Projects" />
+          <DataTable
+            columns={['Project', 'Client', 'Archived', 'Actions']}
+            rows={archivedProjects.map((project) => [
+              project.name,
+              projectClientName(project),
+              shortDate(project.deleted_at),
+              canAdminister ? (
+                <div className="row-actions" key={`archived-${project.id}`}>
+                  <button type="button" className="table-action" onClick={() => reinstateProject(project)}>Reinstate</button>
+                  <button type="button" className="table-action danger" onClick={() => permanentlyDeleteProject(project)}>Delete permanently</button>
+                </div>
+              ) : 'Archived',
+            ])}
+          />
+        </section>
+      )}
       {activeProjectSection === 'reports' && <section className="panel"><PanelTitle icon={BarChart3} title="Project Reports" /><DataTable columns={['Report', 'Records']} rows={[['Portfolio Register', filteredProjects.length], ['Schedule Activities', selectedTasks.length], ['Budget Lines', selectedBudgetLines.length], ['Purchase Orders', selectedOrders.length], ['Site Reports', selectedDailyReports.length]]} /></section>}
       {activeProjectSection === 'workspace' && renderProjectWorkspace()}
     </section>

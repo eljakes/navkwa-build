@@ -122,6 +122,43 @@ class NavkwaBuildPhaseOneApiTest extends TestCase
         $second->assertJsonPath('project.name', "New Project {$secondCode}");
     }
 
+    public function test_projects_can_be_archived_reinstated_and_permanently_deleted(): void
+    {
+        [$user, $branch] = $this->tenantUser();
+        Sanctum::actingAs($user);
+
+        $project = Project::query()->create([
+            'company_id' => $user->company_id,
+            'branch_id' => $branch->id,
+            'code' => 'PRJ-ARCHIVE-001',
+            'name' => 'Archive Lifecycle Project',
+        ]);
+
+        $this->deleteJson("/api/v1/projects/{$project->id}")
+            ->assertOk()
+            ->assertJsonPath('message', 'Project archived.');
+
+        $this->assertSoftDeleted($project);
+        $this->getJson('/api/v1/projects')
+            ->assertOk()
+            ->assertJsonCount(0, 'data')
+            ->assertJsonPath('archived.0.id', $project->id);
+
+        $this->postJson("/api/v1/projects/{$project->id}/restore")
+            ->assertOk()
+            ->assertJsonPath('message', 'Project reinstated.')
+            ->assertJsonPath('project.id', $project->id);
+
+        $this->assertNotSoftDeleted($project->fresh());
+
+        $this->deleteJson("/api/v1/projects/{$project->id}")->assertOk();
+        $this->deleteJson("/api/v1/projects/{$project->id}/force")
+            ->assertOk()
+            ->assertJsonPath('message', 'Project permanently deleted.');
+
+        $this->assertDatabaseMissing('projects', ['id' => $project->id]);
+    }
+
     public function test_admin_can_create_update_and_delete_users(): void
     {
         [$user, $branch] = $this->tenantUser();

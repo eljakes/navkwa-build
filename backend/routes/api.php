@@ -96,6 +96,8 @@ Route::prefix('v1')->group(function (): void {
         Route::get('projects', [ProjectController::class, 'index']);
         Route::post('projects', [ProjectController::class, 'store'])->middleware('permission:projects.manage');
         Route::post('projects/{project}/future-image', [ProjectController::class, 'uploadFutureImage'])->middleware('permission:projects.manage');
+        Route::post('projects/{project}/restore', [ProjectController::class, 'restore'])->middleware('permission:settings.manage');
+        Route::delete('projects/{project}/force', [ProjectController::class, 'forceDestroy'])->middleware('permission:settings.manage');
         Route::get('projects/timeline', [ProjectController::class, 'timeline']);
         Route::get('projects/{project}', [ProjectController::class, 'show']);
         Route::patch('projects/{project}', [ProjectController::class, 'update'])->middleware('permission:settings.manage');

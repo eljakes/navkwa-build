@@ -458,6 +458,14 @@ export const api = {
     request(`/projects/${projectId}`, {
       method: 'DELETE',
     }),
+  restoreProject: (projectId) =>
+    request(`/projects/${projectId}/restore`, {
+      method: 'POST',
+    }),
+  forceDeleteProject: (projectId) =>
+    request(`/projects/${projectId}/force`, {
+      method: 'DELETE',
+    }),
   createTask: (projectId, payload) =>
     request(`/projects/${projectId}/tasks`, {
       method: 'POST',

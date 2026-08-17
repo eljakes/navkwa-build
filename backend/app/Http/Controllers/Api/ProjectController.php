@@ -14,8 +14,9 @@ class ProjectController extends ApiController
 {
     public function index(Request $request): JsonResponse
     {
+        $companyId = $this->companyId($request);
         $projects = Project::query()
-            ->forCompany($this->companyId($request))
+            ->forCompany($companyId)
             ->with(['branch', 'client'])
             ->withCount([
                 'tasks',
@@ -41,7 +42,16 @@ class ProjectController extends ApiController
             ->latest()
             ->paginate((int) $request->query('per_page', 25));
 
-        return response()->json($projects);
+        $archived = Project::onlyTrashed()
+            ->forCompany($companyId)
+            ->with(['branch', 'client'])
+            ->latest('deleted_at')
+            ->get();
+
+        return response()->json([
+            ...$projects->toArray(),
+            'archived' => $archived,
+        ]);
     }
 
     public function store(Request $request): JsonResponse
@@ -271,6 +281,39 @@ class ProjectController extends ApiController
         $project->delete();
 
         return response()->json(['message' => 'Project archived.']);
+    }
+
+    public function restore(Request $request, int $project): JsonResponse
+    {
+        $project = Project::onlyTrashed()
+            ->forCompany($this->companyId($request))
+            ->whereKey($project)
+            ->firstOrFail();
+
+        $project->restore();
+        $project->forceFill(['updated_by' => $this->user($request)->id])->save();
+
+        return response()->json([
+            'message' => 'Project reinstated.',
+            'project' => $project->fresh(['branch', 'client']),
+        ]);
+    }
+
+    public function forceDestroy(Request $request, int $project): JsonResponse
+    {
+        $project = Project::onlyTrashed()
+            ->forCompany($this->companyId($request))
+            ->whereKey($project)
+            ->firstOrFail();
+
+        $futureImagePath = $project->future_image_path;
+        $project->forceDelete();
+
+        if ($futureImagePath) {
+            Storage::disk('public')->delete($futureImagePath);
+        }
+
+        return response()->json(['message' => 'Project permanently deleted.']);
     }
 
     public function timeline(Request $request): JsonResponse
