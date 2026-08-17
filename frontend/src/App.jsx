@@ -961,6 +961,7 @@ function App() {
   const [organization, setOrganization] = useState(null)
   const [projects, setProjects] = useState([])
   const [archivedProjects, setArchivedProjects] = useState([])
+  const [projectTemplates, setProjectTemplates] = useState([])
   const [selectedProjectId, setSelectedProjectId] = useState(null)
   const [selectedProject, setSelectedProject] = useState(null)
   const [requisitions, setRequisitions] = useState([])
@@ -1263,6 +1264,7 @@ function App() {
       setOrganization(orgData)
       setProjects(projectData.data || [])
       setArchivedProjects(projectData.archived || [])
+      setProjectTemplates(projectData.templates || [])
       setProcurement(procurementData)
       setRequisitions(procurementData.requisitions || [])
       setPurchaseOrders(procurementData.purchase_orders || [])
@@ -3297,6 +3299,7 @@ function App() {
             users={users}
             projects={projects}
             archivedProjects={archivedProjects}
+            projectTemplates={projectTemplates}
             selectedProject={selectedProject}
             setSelectedProjectId={setSelectedProjectId}
             projectForm={projectForm}
@@ -7965,6 +7968,7 @@ function ProjectsView({
   users = emptyList,
   projects,
   archivedProjects = emptyList,
+  projectTemplates = emptyList,
   selectedProject,
   setSelectedProjectId,
   projectForm,
@@ -8002,6 +8006,7 @@ function ProjectsView({
   const [editingTaskId, setEditingTaskId] = useState(null)
   const [editingBudgetLineId, setEditingBudgetLineId] = useState(null)
   const [projectAdminForm, setProjectAdminForm] = useState(emptyProjectForm)
+  const [templateName, setTemplateName] = useState('')
 
   const countryOptions = useMemo(
     () => Object.entries(africanCountryNames).map(([value, label]) => ({ value, label, meta: value })).sort((a, b) => a.label.localeCompare(b.label)),
@@ -8133,6 +8138,39 @@ function ProjectsView({
     if (!window.confirm(`Permanently delete ${project.name}? This will delete its related project records and cannot be undone.`)) return
 
     runAction(() => api.forceDeleteProject(project.id), 'Project permanently deleted.')
+  }
+
+  function saveSelectedProjectAsTemplate(event) {
+    event.preventDefault()
+    if (!selectedProject || !templateName.trim()) return
+
+    runAction(
+      () => api.createProjectTemplate(selectedProject.id, { name: templateName.trim() }),
+      'Project template created.',
+    ).then((result) => {
+      if (result) setTemplateName('')
+    })
+  }
+
+  function applyProjectTemplate(template) {
+    setProjectForm({
+      ...emptyProjectForm,
+      ...(template.template_data || {}),
+      branch_id: branches[0]?.id || '',
+      code: '',
+      name: '',
+      client_id: '',
+      client_name: '',
+      future_image: null,
+      future_image_preview: '',
+    })
+    setActiveProjectSection('new')
+  }
+
+  function deleteProjectTemplate(template) {
+    if (!window.confirm(`Delete the template ${template.name}?`)) return
+
+    runAction(() => api.deleteProjectTemplate(template.id), 'Project template deleted.')
   }
 
   function saveTask(event) {
@@ -9004,7 +9042,30 @@ function ProjectsView({
       {activeProjectSection === 'portfolio' && renderPortfolioDashboard()}
       {activeProjectSection === 'register' && <>{renderProjectFilters()}{renderProjectRegister(filteredProjects)}</>}
       {activeProjectSection === 'new' && renderNewProject()}
-      {activeProjectSection === 'templates' && <section className="panel"><PanelTitle icon={Layers3} title="Project Templates" /><div className="empty-cell">No project templates configured yet.</div></section>}
+      {activeProjectSection === 'templates' && (
+        <section className="panel">
+          <PanelTitle icon={Layers3} title="Project Templates" />
+          {canManageProjects && selectedProject && (
+            <form className="row-actions" onSubmit={saveSelectedProjectAsTemplate}>
+              <Field label="Template Name" name="template_name" value={templateName} onChange={(event) => setTemplateName(event.target.value)} placeholder={`${selectedProject.name} Template`} required />
+              <button type="submit" className="primary-action"><Plus size={16} />Save selected project as template</button>
+            </form>
+          )}
+          <DataTable
+            columns={['Template', 'Source Project', 'Created', 'Actions']}
+            rows={projectTemplates.map((template) => [
+              <div key={`template-${template.id}`}><strong>{template.name}</strong><small>{template.description || ''}</small></div>,
+              template.source_project?.name || 'Original project removed',
+              shortDate(template.created_at),
+              <div className="row-actions" key={`template-actions-${template.id}`}>
+                <button type="button" className="table-action" onClick={() => applyProjectTemplate(template)}>Use template</button>
+                {canManageProjects && <button type="button" className="table-action danger" onClick={() => deleteProjectTemplate(template)}>Delete</button>}
+              </div>,
+            ])}
+          />
+          {!projectTemplates.length && <div className="empty-cell">Select a project, then save it here as your first reusable template.</div>}
+        </section>
+      )}
       {activeProjectSection === 'archived' && (
         <section className="panel">
           <PanelTitle icon={Archive} title="Archived Projects" />

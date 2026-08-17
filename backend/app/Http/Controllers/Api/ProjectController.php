@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Models\Branch;
 use App\Models\Client;
 use App\Models\Project;
+use App\Models\ProjectTemplate;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -48,9 +49,16 @@ class ProjectController extends ApiController
             ->latest('deleted_at')
             ->get();
 
+        $templates = ProjectTemplate::query()
+            ->forCompany($companyId)
+            ->with('sourceProject:id,name')
+            ->latest()
+            ->get();
+
         return response()->json([
             ...$projects->toArray(),
             'archived' => $archived,
+            'templates' => $templates,
         ]);
     }
 
@@ -314,6 +322,47 @@ class ProjectController extends ApiController
         }
 
         return response()->json(['message' => 'Project permanently deleted.']);
+    }
+
+    public function storeTemplate(Request $request, Project $project): JsonResponse
+    {
+        $companyId = $this->companyId($request);
+        $project = $this->projectForTenant($request, $project->id);
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255', Rule::unique('project_templates')->where('company_id', $companyId)],
+            'description' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $template = ProjectTemplate::query()->create([
+            'company_id' => $companyId,
+            'source_project_id' => $project->id,
+            'name' => $data['name'],
+            'description' => $data['description'] ?? $project->description,
+            'template_data' => [
+                'description' => $project->description,
+                'status' => 'planning',
+                'health_status' => 'on_track',
+                'risk_level' => $project->risk_level,
+                'country' => $project->country,
+                'currency' => $project->currency,
+                ...($project->metadata ?? []),
+            ],
+            'created_by' => $this->user($request)->id,
+        ]);
+
+        return response()->json(['message' => 'Project template created.', 'template' => $template->load('sourceProject:id,name')], 201);
+    }
+
+    public function destroyTemplate(Request $request, ProjectTemplate $projectTemplate): JsonResponse
+    {
+        $template = ProjectTemplate::query()
+            ->forCompany($this->companyId($request))
+            ->whereKey($projectTemplate->id)
+            ->firstOrFail();
+
+        $template->delete();
+
+        return response()->json(['message' => 'Project template deleted.']);
     }
 
     public function timeline(Request $request): JsonResponse

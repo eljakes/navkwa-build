@@ -466,6 +466,15 @@ export const api = {
     request(`/projects/${projectId}/force`, {
       method: 'DELETE',
     }),
+  createProjectTemplate: (projectId, payload) =>
+    request(`/projects/${projectId}/templates`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  deleteProjectTemplate: (templateId) =>
+    request(`/project-templates/${templateId}`, {
+      method: 'DELETE',
+    }),
   createTask: (projectId, payload) =>
     request(`/projects/${projectId}/tasks`, {
       method: 'POST',

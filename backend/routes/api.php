@@ -98,6 +98,8 @@ Route::prefix('v1')->group(function (): void {
         Route::post('projects/{project}/future-image', [ProjectController::class, 'uploadFutureImage'])->middleware('permission:projects.manage');
         Route::post('projects/{project}/restore', [ProjectController::class, 'restore'])->middleware('permission:projects.manage|settings.manage');
         Route::delete('projects/{project}/force', [ProjectController::class, 'forceDestroy'])->middleware('permission:projects.manage|settings.manage');
+        Route::post('projects/{project}/templates', [ProjectController::class, 'storeTemplate'])->middleware('permission:projects.manage|settings.manage');
+        Route::delete('project-templates/{projectTemplate}', [ProjectController::class, 'destroyTemplate'])->middleware('permission:projects.manage|settings.manage');
         Route::get('projects/timeline', [ProjectController::class, 'timeline']);
         Route::get('projects/{project}', [ProjectController::class, 'show']);
         Route::patch('projects/{project}', [ProjectController::class, 'update'])->middleware('permission:settings.manage');

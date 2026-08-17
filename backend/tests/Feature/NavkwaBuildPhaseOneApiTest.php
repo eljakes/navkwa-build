@@ -159,6 +159,39 @@ class NavkwaBuildPhaseOneApiTest extends TestCase
         $this->assertDatabaseMissing('projects', ['id' => $project->id]);
     }
 
+    public function test_projects_can_be_saved_used_and_deleted_as_templates(): void
+    {
+        [$user, $branch] = $this->tenantUser();
+        Sanctum::actingAs($user);
+
+        $project = Project::query()->create([
+            'company_id' => $user->company_id,
+            'branch_id' => $branch->id,
+            'code' => 'PRJ-TEMPLATE-001',
+            'name' => 'Residential Standard',
+            'description' => 'Standard residential delivery setup.',
+            'risk_level' => 'low',
+            'metadata' => ['project_type' => 'Residential', 'approval_workflow' => 'Standard'],
+        ]);
+
+        $created = $this->postJson("/api/v1/projects/{$project->id}/templates", [
+            'name' => 'Residential Template',
+        ])->assertCreated()
+            ->assertJsonPath('template.template_data.project_type', 'Residential')
+            ->assertJsonPath('template.template_data.status', 'planning');
+
+        $templateId = $created->json('template.id');
+        $this->getJson('/api/v1/projects')
+            ->assertOk()
+            ->assertJsonPath('templates.0.id', $templateId);
+
+        $this->deleteJson("/api/v1/project-templates/{$templateId}")
+            ->assertOk()
+            ->assertJsonPath('message', 'Project template deleted.');
+
+        $this->assertDatabaseMissing('project_templates', ['id' => $templateId]);
+    }
+
     public function test_admin_can_create_update_and_delete_users(): void
     {
         [$user, $branch] = $this->tenantUser();
