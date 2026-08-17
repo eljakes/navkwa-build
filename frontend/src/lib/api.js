@@ -444,6 +444,11 @@ export const api = {
       method: 'POST',
       body: requestBody(payload),
     }),
+  uploadProjectImage: (projectId, formData) =>
+    request(`/projects/${projectId}/future-image`, {
+      method: 'POST',
+      body: formData,
+    }),
   updateProject: (projectId, payload) =>
     request(`/projects/${projectId}`, {
       method: payload instanceof FormData ? 'POST' : 'PATCH',

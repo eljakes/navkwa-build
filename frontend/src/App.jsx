@@ -983,6 +983,7 @@ function App() {
   const [adminApprovals, setAdminApprovals] = useState(emptyAdminApprovalData)
   const [reports, setReports] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [projectSubmitting, setProjectSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [themePreference, setThemePreference] = useState(() => readThemePreference())
@@ -1471,16 +1472,41 @@ function App() {
 
   async function createProject(event) {
     event.preventDefault()
-    const payload = projectRequestPayload(projectForm)
+    if (projectSubmitting) return
 
-    const result = await runAction(
-      () => api.createProject(payload),
-      'Project created.',
-    )
+    const branchId = projectForm.branch_id || firstBranchId
 
-    if (result?.project?.id) {
-      setSelectedProjectId(result.project.id)
-      setProjectForm({ ...emptyProjectForm, branch_id: projectForm.branch_id })
+    setProjectSubmitting(true)
+    const submittedForm = { ...projectForm, branch_id: branchId }
+    const payload = projectPayloadFromForm(submittedForm)
+
+    try {
+      setError('')
+      setNotice('')
+      const result = await api.createProject(payload)
+
+      if (result?.project?.id) {
+        let imageWarning = ''
+        if (projectForm.future_image) {
+          const imageData = new FormData()
+          imageData.append('future_image', projectForm.future_image)
+          try {
+            await api.uploadProjectImage(result.project.id, imageData)
+          } catch (imageError) {
+            imageWarning = ` The project was saved, but its image could not be uploaded: ${validationSummary(imageError)}`
+          }
+        }
+
+        setProjects((current) => [result.project, ...current.filter((project) => project.id !== result.project.id)])
+        setSelectedProjectId(result.project.id)
+        setProjectForm({ ...emptyProjectForm, branch_id: branchId })
+        setNotice(`Project created.${imageWarning}`)
+        await refreshWorkspace({ force: true, silent: true })
+      }
+    } catch (err) {
+      setError(validationSummary(err))
+    } finally {
+      setProjectSubmitting(false)
     }
   }
 
@@ -1741,7 +1767,10 @@ function App() {
   async function createSupplierPrice(event) {
     event.preventDefault()
     const form = inventoryForms.supplierPrice
-    if (!form.supplier_id) return
+    if (!form.supplier_id) {
+      setError('Select a supplier before adding a supplier price.')
+      return
+    }
 
     await runAction(
       () =>
@@ -1759,7 +1788,10 @@ function App() {
   async function createSupplierReview(event) {
     event.preventDefault()
     const form = inventoryForms.supplierReview
-    if (!form.supplier_id) return
+    if (!form.supplier_id) {
+      setError('Select a supplier before recording a review.')
+      return
+    }
 
     await runAction(
       () =>
@@ -1778,7 +1810,10 @@ function App() {
   async function createDailyReport(event) {
     event.preventDefault()
     const form = fieldForms.dailyReport
-    if (!form.project_id) return
+    if (!form.project_id) {
+      setError('Select a project before creating a daily report.')
+      return
+    }
 
     await runAction(
       () =>
@@ -1794,7 +1829,10 @@ function App() {
   async function createFieldIssue(event) {
     event.preventDefault()
     const form = fieldForms.issue
-    if (!form.project_id) return
+    if (!form.project_id) {
+      setError('Select a project before creating a site issue.')
+      return
+    }
 
     const formData = new FormData()
     Object.entries(form).forEach(([key, value]) => {
@@ -1863,7 +1901,10 @@ function App() {
   async function recordPayment(event) {
     event.preventDefault()
     const form = financeForms.payment
-    if (!form.invoice_id) return
+    if (!form.invoice_id) {
+      setError('Select an invoice before recording a payment.')
+      return
+    }
 
     await runAction(
       () =>
@@ -1925,7 +1966,10 @@ function App() {
     event.preventDefault()
     const form = financeForms.workbook
 
-    if (!form.file) return
+    if (!form.file) {
+      setError('Choose a finance workbook before uploading.')
+      return
+    }
 
     const formData = new FormData()
     Object.entries(form).forEach(([key, value]) => {
@@ -1942,7 +1986,10 @@ function App() {
   async function createEmployee(event) {
     event.preventDefault()
     const form = peopleForms.employee
-    if (!form.user_id) return
+    if (!form.user_id) {
+      setError('Select a user before creating an employee profile.')
+      return
+    }
 
     await runAction(
       () =>
@@ -1966,7 +2013,10 @@ function App() {
   async function createLeaveRequest(event) {
     event.preventDefault()
     const form = peopleForms.leave
-    if (!form.employee_profile_id) return
+    if (!form.employee_profile_id) {
+      setError('Select an employee before creating a leave request.')
+      return
+    }
 
     await runAction(
       () =>
@@ -2017,7 +2067,10 @@ function App() {
   async function assignEquipment(event) {
     event.preventDefault()
     const form = equipmentForms.assignment
-    if (!form.asset_id || !form.project_id) return
+    if (!form.asset_id || !form.project_id) {
+      setError('Select both equipment and a project before assigning it.')
+      return
+    }
 
     await runAction(
       () =>
@@ -2033,7 +2086,10 @@ function App() {
   async function createMaintenanceLog(event) {
     event.preventDefault()
     const form = equipmentForms.maintenance
-    if (!form.asset_id) return
+    if (!form.asset_id) {
+      setError('Select equipment before creating a maintenance log.')
+      return
+    }
 
     await runAction(
       () =>
@@ -2052,7 +2108,10 @@ function App() {
   async function createFuelLog(event) {
     event.preventDefault()
     const form = equipmentForms.fuel
-    if (!form.asset_id) return
+    if (!form.asset_id) {
+      setError('Select equipment before recording fuel usage.')
+      return
+    }
 
     await runAction(
       () =>
@@ -2070,7 +2129,10 @@ function App() {
   async function createInspection(event) {
     event.preventDefault()
     const form = complianceForms.inspection
-    if (!form.project_id) return
+    if (!form.project_id) {
+      setError('Select a project before creating an inspection.')
+      return
+    }
 
     await runAction(
       () =>
@@ -2092,7 +2154,10 @@ function App() {
   async function createNcr(event) {
     event.preventDefault()
     const form = complianceForms.ncr
-    if (!form.project_id) return
+    if (!form.project_id) {
+      setError('Select a project before creating an NCR.')
+      return
+    }
 
     await runAction(
       () =>
@@ -2218,7 +2283,10 @@ function App() {
   async function grantPortalAccess(event) {
     event.preventDefault()
     const form = portalForms.access
-    if (!form.portal_user_id || !form.project_id) return
+    if (!form.portal_user_id || !form.project_id) {
+      setError('Select both a portal user and a project before granting access.')
+      return
+    }
 
     await runAction(
       () =>
@@ -2235,7 +2303,10 @@ function App() {
   async function createClientApproval(event) {
     event.preventDefault()
     const form = portalForms.clientApproval
-    if (!form.project_id) return
+    if (!form.project_id) {
+      setError('Select a project before creating a client approval.')
+      return
+    }
 
     await runAction(
       () =>
@@ -2253,7 +2324,10 @@ function App() {
   async function createConsultantSubmittal(event) {
     event.preventDefault()
     const form = portalForms.submittal
-    if (!form.project_id) return
+    if (!form.project_id) {
+      setError('Select a project before creating a consultant submittal.')
+      return
+    }
 
     await runAction(
       () =>
@@ -2272,7 +2346,10 @@ function App() {
   async function createPortalWorkItem(event) {
     event.preventDefault()
     const form = portalForms.workItem
-    if (!form.project_id) return
+    if (!form.project_id) {
+      setError('Select a project before creating a portal work item.')
+      return
+    }
 
     await runAction(
       () =>
@@ -3226,6 +3303,8 @@ function App() {
             budgetForm={budgetForm}
             setBudgetForm={setBudgetForm}
             createProject={createProject}
+            projectSubmitting={projectSubmitting}
+            reportError={setError}
             createTask={createTask}
             createBudgetLine={createBudgetLine}
             currentUser={user}
@@ -7891,6 +7970,8 @@ function ProjectsView({
   budgetForm,
   setBudgetForm,
   createProject,
+  projectSubmitting,
+  reportError,
   createTask,
   createBudgetLine,
   currentUser,
@@ -8300,13 +8381,14 @@ function ProjectsView({
           <PanelTitle icon={FolderKanban} title="Basic Information" />
           <div className="form-grid project-create-grid">
             <Field label="Project Number" name="code" value={projectForm.code} onChange={formHandler} placeholder="Auto-generated unless entered" />
-            <Field label="Project Name" name="name" value={projectForm.name} onChange={formHandler} required />
+            <Field label="Project Name" name="name" value={projectForm.name} onChange={formHandler} placeholder="Auto-generated unless entered" />
             <Select label="Client" name="client_id" value={projectForm.client_id} onChange={formHandler}>
               <option value="">Type client name instead</option>
               {clients.map((client) => <option key={client.id} value={client.id}>{client.name}</option>)}
             </Select>
             <Field label="Client Name" name="client_name" value={projectForm.client_name} onChange={formHandler} placeholder="Creates client if not selected" />
-            <Select label="Branch" name="branch_id" value={projectForm.branch_id} onChange={formHandler} required>
+            <Select label="Branch" name="branch_id" value={projectForm.branch_id} onChange={formHandler}>
+              {!branches.length && <option value="">No branches available</option>}
               {branches.map((branch) => <option value={branch.id} key={branch.id}>{branch.name}</option>)}
             </Select>
             <Field label="Project Type" name="project_type" value={projectForm.project_type} onChange={formHandler} placeholder="Residential, commercial, infrastructure" />
@@ -8319,7 +8401,7 @@ function ProjectsView({
               className="span-full"
               imageUrl={projectForm.future_image_preview}
               file={projectForm.future_image}
-              onChange={setProjectFutureImage(setProjectForm)}
+              onChange={setProjectFutureImage(setProjectForm, reportError)}
             />
           </div>
         </section>
@@ -8407,7 +8489,10 @@ function ProjectsView({
         </section>
 
         <div className="row-actions project-create-actions">
-          <button type="submit" className="primary-action"><Plus size={17} />Create project</button>
+          {!branches.length && <small>A Head Office branch will be created automatically.</small>}
+          <button type="submit" className="primary-action" disabled={projectSubmitting}>
+            <Plus size={17} />{projectSubmitting ? 'Creating project…' : 'Create project'}
+          </button>
         </div>
       </form>
     )
@@ -8944,7 +9029,7 @@ function projectRequestPayload(form) {
   return formData
 }
 
-function setProjectFutureImage(setter) {
+function setProjectFutureImage(setter, reportError = () => {}) {
   return (event) => {
     const file = event.target.files?.[0] || null
 
@@ -8953,14 +9038,32 @@ function setProjectFutureImage(setter) {
       return
     }
 
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp']
+    if (!allowedTypes.includes(file.type)) {
+      event.target.value = ''
+      setter((current) => ({ ...current, future_image: null, future_image_preview: '' }))
+      reportError('Project image must be a JPG, PNG, or WebP file.')
+      return
+    }
+
+    if (file.size > 6 * 1024 * 1024) {
+      event.target.value = ''
+      setter((current) => ({ ...current, future_image: null, future_image_preview: '' }))
+      reportError('Project image must be 6 MB or smaller.')
+      return
+    }
+
+    reportError('')
+
+    // Store the file immediately so a quick submit cannot race the preview reader.
+    setter((current) => ({ ...current, future_image: file, future_image_preview: '' }))
     const reader = new FileReader()
     reader.onload = () => {
-      setter((current) => ({
-        ...current,
-        future_image: file,
-        future_image_preview: String(reader.result || ''),
-      }))
+      setter((current) => current.future_image === file
+        ? { ...current, future_image_preview: String(reader.result || '') }
+        : current)
     }
+    reader.onerror = () => reportError('The image was selected, but its preview could not be displayed.')
     reader.readAsDataURL(file)
   }
 }

@@ -2540,29 +2540,16 @@ class PlatformAdminController extends ApiController
 
     private function nextGlobalNumber(string $prefix, string $modelClass, string $column): string
     {
-        $base = $prefix.'-'.now()->format('ym');
-        $next = DB::table((new $modelClass)->getTable())->where($column, 'like', "{$base}-%")->count() + 1;
-
-        do {
-            $candidate = sprintf('%s-%05d', $base, $next);
-            $exists = DB::table((new $modelClass)->getTable())->where($column, $candidate)->exists();
-            $next++;
-        } while ($exists);
-
-        return $candidate;
+        return $this->nextGlobalSequenceCode($prefix.'-'.now()->format('ym'), $modelClass, $column);
     }
 
     private function nextScopedCompanyNumber(string $prefix, string $modelClass, string $column, int $companyId): string
     {
-        $base = $prefix.'-'.now()->format('ym');
-        $next = DB::table((new $modelClass)->getTable())->where('company_id', $companyId)->where($column, 'like', "{$base}-%")->count() + 1;
-
-        do {
-            $candidate = sprintf('%s-%05d', $base, $next);
-            $exists = DB::table((new $modelClass)->getTable())->where('company_id', $companyId)->where($column, $candidate)->exists();
-            $next++;
-        } while ($exists);
-
-        return $candidate;
+        return $this->nextScopedSequenceNumber(
+            $prefix.'-'.now()->format('ym'),
+            $modelClass,
+            $column,
+            ['company_id' => $companyId],
+        );
     }
 }

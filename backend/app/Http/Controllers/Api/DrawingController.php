@@ -131,11 +131,14 @@ class DrawingController extends ApiController
             'file' => ['nullable', 'file', 'max:102400', 'extensions:'.self::DRAWING_FILE_EXTENSIONS],
         ]);
 
-        $revisionCode = $this->suppliedCode($data['revision_code'] ?? null) ?? $this->nextRevisionCode($drawing);
+        $revision = DB::transaction(function () use ($request, $drawing, $data) {
+            // Serialize revision allocation per drawing so concurrent uploads cannot
+            // both receive the same automatically generated P-series code.
+            $drawing = Drawing::query()->whereKey($drawing->id)->lockForUpdate()->firstOrFail();
+            $revisionCode = $this->suppliedCode($data['revision_code'] ?? null) ?? $this->nextRevisionCode($drawing);
 
-        abort_if($drawing->revisions()->where('revision_code', $revisionCode)->exists(), 422, 'Revision code already exists for this drawing.');
+            abort_if($drawing->revisions()->where('revision_code', $revisionCode)->exists(), 422, 'Revision code already exists for this drawing.');
 
-        $revision = DB::transaction(function () use ($request, $drawing, $data, $revisionCode) {
             $drawing->revisions()
                 ->whereNull('superseded_at')
                 ->where('revision_code', '!=', $revisionCode)

@@ -99,6 +99,29 @@ class NavkwaBuildPhaseOneApiTest extends TestCase
             ->assertJsonPath('portfolio_cards.0.future_image_url', $project->future_image_url);
     }
 
+    public function test_projects_generate_unique_codes_when_optional_fields_are_blank(): void
+    {
+        [$user, $branch] = $this->tenantUser();
+        Sanctum::actingAs($user);
+
+        $first = $this->postJson('/api/v1/projects', [
+            'branch_id' => $branch->id,
+        ])->assertCreated();
+        $second = $this->postJson('/api/v1/projects', [
+            'branch_id' => $branch->id,
+            'code' => '',
+            'name' => '',
+        ])->assertCreated();
+
+        $firstCode = $first->json('project.code');
+        $secondCode = $second->json('project.code');
+
+        $this->assertMatchesRegularExpression('/^PRJ-\d{4}-\d{5}$/', $firstCode);
+        $this->assertMatchesRegularExpression('/^PRJ-\d{4}-\d{5}$/', $secondCode);
+        $this->assertNotSame($firstCode, $secondCode);
+        $second->assertJsonPath('project.name', "New Project {$secondCode}");
+    }
+
     public function test_admin_can_create_update_and_delete_users(): void
     {
         [$user, $branch] = $this->tenantUser();

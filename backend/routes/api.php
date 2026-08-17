@@ -95,6 +95,7 @@ Route::prefix('v1')->group(function (): void {
 
         Route::get('projects', [ProjectController::class, 'index']);
         Route::post('projects', [ProjectController::class, 'store'])->middleware('permission:projects.manage');
+        Route::post('projects/{project}/future-image', [ProjectController::class, 'uploadFutureImage'])->middleware('permission:projects.manage');
         Route::get('projects/timeline', [ProjectController::class, 'timeline']);
         Route::get('projects/{project}', [ProjectController::class, 'show']);
         Route::patch('projects/{project}', [ProjectController::class, 'update'])->middleware('permission:settings.manage');

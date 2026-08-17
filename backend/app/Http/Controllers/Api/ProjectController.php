@@ -49,11 +49,11 @@ class ProjectController extends ApiController
         $companyId = $this->companyId($request);
 
         $data = $request->validate([
-            'branch_id' => ['required', 'integer'],
+            'branch_id' => ['nullable', 'integer'],
             'client_id' => ['nullable', 'integer'],
             'client_name' => ['nullable', 'string', 'max:255'],
             'code' => ['nullable', 'string', 'max:40', Rule::unique('projects')->where('company_id', $companyId)],
-            'name' => ['required', 'string', 'max:255'],
+            'name' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:4000'],
             'status' => ['nullable', Rule::in($this->projectStatuses())],
             'health_status' => ['nullable', Rule::in(['on_track', 'at_risk', 'critical'])],
@@ -69,7 +69,20 @@ class ProjectController extends ApiController
             ...$this->projectMetadataRules(),
         ]);
 
-        $branch = Branch::query()->forCompany($companyId)->whereKey($data['branch_id'])->firstOrFail();
+        $branch = Branch::query()
+            ->forCompany($companyId)
+            ->when($data['branch_id'] ?? null, fn ($query, $branchId) => $query->whereKey($branchId))
+            ->first();
+
+        if (! $branch) {
+            $branch = Branch::query()->forCompany($companyId)->first()
+                ?? Branch::query()->create([
+                    'company_id' => $companyId,
+                    'name' => 'Head Office',
+                    'code' => $this->nextCompanyCode('HQ', Branch::class, 'code', $companyId),
+                    'country' => strtoupper($data['country'] ?? $this->user($request)->company->country ?? 'GH'),
+                ]);
+        }
         $clientId = $data['client_id'] ?? null;
 
         if ($clientId) {
@@ -84,12 +97,13 @@ class ProjectController extends ApiController
             $clientId = $client->id;
         }
 
+        $projectCode = $this->suppliedCode($data['code'] ?? null) ?? $this->nextNumber('PRJ', Project::class, 'code', $companyId);
         $project = Project::query()->create([
             'company_id' => $companyId,
             'branch_id' => $branch->id,
             'client_id' => $clientId,
-            'code' => $this->suppliedCode($data['code'] ?? null) ?? $this->nextNumber('PRJ', Project::class, 'code', $companyId),
-            'name' => $data['name'],
+            'code' => $projectCode,
+            'name' => filled($data['name'] ?? null) ? $data['name'] : "New Project {$projectCode}",
             'description' => $data['description'] ?? null,
             'status' => $data['status'] ?? 'planning',
             'health_status' => $data['health_status'] ?? 'on_track',
@@ -118,6 +132,25 @@ class ProjectController extends ApiController
         ]);
 
         return response()->json(['project' => $project->load(['branch', 'client'])], 201);
+    }
+
+    public function uploadFutureImage(Request $request, Project $project): JsonResponse
+    {
+        $project = $this->projectForTenant($request, $project->id);
+        $request->validate([
+            'future_image' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:6144'],
+        ]);
+
+        if ($project->future_image_path) {
+            Storage::disk('public')->delete($project->future_image_path);
+        }
+
+        $project->forceFill([
+            'future_image_path' => $this->storeFutureImage($request, $project),
+            'updated_by' => $this->user($request)->id,
+        ])->save();
+
+        return response()->json(['project' => $project->fresh()->load(['branch', 'client'])]);
     }
 
     public function show(Request $request, Project $project): JsonResponse

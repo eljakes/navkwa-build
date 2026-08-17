@@ -57,6 +57,16 @@ abstract class ApiController extends Controller
         return $this->nextScopedSequenceCode($prefix, $modelClass, $column, ['project_id' => $projectId], $pad);
     }
 
+    protected function nextGlobalSequenceCode(string $prefix, string $modelClass, string $column, int $pad = 5): string
+    {
+        return $this->nextScopedSequenceCode($prefix, $modelClass, $column, [], $pad);
+    }
+
+    protected function nextScopedSequenceNumber(string $prefix, string $modelClass, string $column, array $scope, int $pad = 5): string
+    {
+        return $this->nextScopedSequenceCode($prefix, $modelClass, $column, $scope, $pad);
+    }
+
     protected function suppliedCode(?string $value): ?string
     {
         if (blank($value)) {
@@ -80,7 +90,7 @@ abstract class ApiController extends Controller
     private function nextScopedSequenceCode(string $prefix, string $modelClass, string $column, array $scope, int $pad): string
     {
         /** @var class-string<Model> $modelClass */
-        $model = new $modelClass();
+        $model = new $modelClass;
         $table = $model->getTable();
         $normalizedPrefix = $this->sequencePrefix($prefix);
         $normalizedScope = $this->normalizedSequenceScope($scope);
