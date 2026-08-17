@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\PortalUser;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -15,7 +16,7 @@ class MfaService
         return $this->base32Encode(random_bytes($bytes));
     }
 
-    public function otpauthUri(User $user, string $secret): string
+    public function otpauthUri(User|PortalUser $user, string $secret): string
     {
         $issuer = rawurlencode((string) config('app.name', 'Navkwa Build'));
         $label = rawurlencode(config('app.name', 'Navkwa Build').':'.$user->email);
@@ -61,7 +62,7 @@ class MfaService
             ->all();
     }
 
-    public function consumeRecoveryCode(User $user, ?string $code): bool
+    public function consumeRecoveryCode(User|PortalUser $user, ?string $code): bool
     {
         $normalized = $this->normalizeRecoveryCode((string) $code);
         if ($normalized === '') {

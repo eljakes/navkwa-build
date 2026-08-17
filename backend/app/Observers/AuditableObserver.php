@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Models\AuditLog;
+use App\Models\PortalUser;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 
@@ -37,9 +38,11 @@ class AuditableObserver
 
     private function record(Model $model, string $action, ?array $before, ?array $after): void
     {
+        $actor = Auth::user();
         AuditLog::query()->create([
-            'company_id' => $model->getAttribute('company_id') ?? Auth::user()?->company_id,
-            'user_id' => Auth::id(),
+            'company_id' => $model->getAttribute('company_id') ?? $actor?->company_id,
+            'user_id' => $actor instanceof PortalUser ? null : Auth::id(),
+            'portal_user_id' => $actor instanceof PortalUser ? $actor->id : null,
             'auditable_type' => $model::class,
             'auditable_id' => $model->getKey(),
             'action' => $action,

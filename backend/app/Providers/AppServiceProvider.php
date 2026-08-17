@@ -2,6 +2,12 @@
 
 namespace App\Providers;
 
+use App\Models\ClientApproval;
+use App\Models\IntegrationConnector;
+use App\Models\PortalMessage;
+use App\Models\PortalPaymentSubmission;
+use App\Models\PortalWorkItem;
+use App\Observers\AuditableObserver;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -16,6 +22,10 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        foreach ([PortalWorkItem::class, PortalMessage::class, PortalPaymentSubmission::class, ClientApproval::class, IntegrationConnector::class] as $model) {
+            $model::observe(AuditableObserver::class);
+        }
+
         RateLimiter::for('api', function (Request $request): Limit {
             return Limit::perMinute(
                 (int) config('security.rate_limits.api_per_minute', 120)

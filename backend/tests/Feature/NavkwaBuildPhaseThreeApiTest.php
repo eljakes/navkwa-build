@@ -1039,7 +1039,7 @@ class NavkwaBuildPhaseThreeApiTest extends TestCase
             'email' => 'reviewer@example.com',
         ])
             ->assertCreated()
-            ->assertJsonPath('portal_user.status', 'active')
+            ->assertJsonPath('portal_user.status', 'invited')
             ->json('portal_user.id');
 
         $this->postJson("/api/v1/portals/users/{$portalUserId}/access", [
@@ -1151,7 +1151,7 @@ class NavkwaBuildPhaseThreeApiTest extends TestCase
 
         $this->getJson('/api/v1/portals')
             ->assertOk()
-            ->assertJsonPath('summary.active_users', 2)
+            ->assertJsonPath('summary.active_users', 0)
             ->assertJsonPath('portal_types.2.key', 'supplier')
             ->assertJsonCount(1, 'work_items');
 

@@ -20,6 +20,7 @@ import {
   Layers3,
   LogOut,
   MapPinned,
+  MessageSquare,
   Moon,
   Package,
   Plus,
@@ -736,7 +737,7 @@ const emptyComplianceForms = {
 }
 
 const emptyPortalForms = {
-  user: { client_id: '', user_type: 'client', name: '', email: '', organization: '' },
+  user: { client_id: '', supplier_id: '', user_type: 'client', name: '', email: '', organization: '' },
   access: { portal_user_id: '', project_id: '', access_level: 'view', access_scope: 'project' },
   clientApproval: { project_id: '', portal_user_id: '', drawing_id: '', document_id: '', title: '' },
   submittal: { project_id: '', portal_user_id: '', drawing_id: '', document_id: '', title: '', discipline: 'architectural' },
@@ -988,6 +989,7 @@ function App() {
   const [projectSubmitting, setProjectSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const [lastPortalInvite, setLastPortalInvite] = useState('')
   const [themePreference, setThemePreference] = useState(() => readThemePreference())
 
   const [projectForm, setProjectForm] = useState(emptyProjectForm)
@@ -1881,6 +1883,7 @@ function App() {
         api.createInvoice({
           project_id: form.project_id ? Number(form.project_id) : null,
           client_id: form.client_id ? Number(form.client_id) : null,
+          supplier_id: form.supplier_id ? Number(form.supplier_id) : null,
           title: form.title,
           due_date: form.due_date || null,
           retention_percent: Number(form.retention_percent || 0),
@@ -2270,7 +2273,7 @@ function App() {
     event.preventDefault()
     const form = portalForms.user
 
-    await runAction(
+    const result = await runAction(
       () =>
         api.createPortalUser({
           client_id: form.client_id ? Number(form.client_id) : null,
@@ -2281,7 +2284,8 @@ function App() {
         }),
       'Portal user created.',
     )
-    setPortalForms((current) => ({ ...current, user: { ...emptyPortalForms.user, user_type: form.user_type, client_id: form.client_id } }))
+    if (result?.invitation_url) setLastPortalInvite(result.invitation_url)
+    setPortalForms((current) => ({ ...current, user: { ...emptyPortalForms.user, user_type: form.user_type, client_id: form.client_id, supplier_id: form.supplier_id } }))
   }
 
   async function grantPortalAccess(event) {
@@ -3436,6 +3440,8 @@ function App() {
             forms={portalForms}
             setPortalForm={setPortalForm}
             createPortalUser={createPortalUser}
+            lastPortalInvite={lastPortalInvite}
+            setLastPortalInvite={setLastPortalInvite}
             grantPortalAccess={grantPortalAccess}
             createClientApproval={createClientApproval}
             createConsultantSubmittal={createConsultantSubmittal}
@@ -4565,6 +4571,14 @@ function PlatformAdminView({
                 )
               })}
             </div>
+          </section>
+          <section className="panel">
+            <PanelTitle icon={MessageSquare} title="External Messages" />
+            <DataTable columns={['From', 'Project', 'Message', 'Sent']} rows={(portals.messages || []).map((message) => [message.portal_user?.name || 'Project team', message.project?.name || '', message.message, shortDate(message.created_at)])} />
+          </section>
+          <section className="panel">
+            <PanelTitle icon={WalletCards} title="Payment Submissions" />
+            <DataTable columns={['From', 'Project', 'Invoice', 'Amount', 'Method', 'Status', 'Action']} rows={(portals.payment_submissions || []).map((payment) => [payment.portal_user?.name || '', payment.project?.name || '', payment.invoice?.invoice_number || '', `${payment.currency} ${payment.amount}`, labelize(payment.payment_method), <Badge key="status" value={payment.status} />, payment.status === 'submitted' ? <div className="row-actions" key={`payment-${payment.id}`}><button type="button" className="table-action" onClick={() => runAction(() => api.reviewPortalPayment(payment.id, 'verified'), 'Payment verified.')}>Verify</button><button type="button" className="table-action danger" onClick={() => runAction(() => api.reviewPortalPayment(payment.id, 'rejected'), 'Payment rejected.')}>Reject</button></div> : 'Reviewed'])} />
           </section>
         </div>
 
@@ -7986,7 +8000,7 @@ function ProjectsView({
   runAction,
 }) {
   const canAdminister = canAdministerRecords(currentUser)
-  const canManageProjects = hasAnyPermission(currentUser, ['projects.manage', 'settings.manage'])
+  const canManageProjects = canAdminister
   const [activeProjectSection, setActiveProjectSection] = useState('portfolio')
   const [activeWorkspaceTab, setActiveWorkspaceTab] = useState('overview')
   const [portfolioFilters, setPortfolioFilters] = useState({
@@ -14820,6 +14834,8 @@ function PortalsView({
   forms,
   setPortalForm,
   createPortalUser,
+  lastPortalInvite,
+  setLastPortalInvite,
   grantPortalAccess,
   createClientApproval,
   createConsultantSubmittal,
@@ -14974,6 +14990,15 @@ function PortalsView({
   }
 
   function renderOverview() {
+    const replyToMessage = (message) => {
+      const reply = window.prompt(`Reply to ${message.portal_user?.name || 'portal user'}`)
+      if (!reply?.trim()) return
+      runAction(
+        () => api.sendPortalMessage(message.portal_user_id, { project_id: message.project_id, subject: message.subject ? `Re: ${message.subject}` : 'Project team reply', message: reply.trim() }),
+        'Reply sent to the portal user.',
+      )
+    }
+
     return (
       <>
         <div className="portal-role-grid">
@@ -14998,6 +15023,35 @@ function PortalsView({
                 activity.title,
                 <Badge key="status" value={activity.status} />,
                 activity.project || '',
+              ])}
+            />
+          </section>
+          <section className="panel">
+            <PanelTitle icon={MessageSquare} title="Secure Portal Messages" />
+            <DataTable
+              columns={['Direction', 'Contact', 'Project', 'Message', 'Sent', 'Action']}
+              rows={(portals.messages || []).map((message) => [
+                message.user_id ? 'Team to portal' : 'Portal to team',
+                message.portal_user?.name || '',
+                message.project?.name || '',
+                message.message,
+                shortDate(message.created_at),
+                <button key={`reply-${message.id}`} type="button" className="table-action" onClick={() => replyToMessage(message)}>Reply</button>,
+              ])}
+            />
+          </section>
+          <section className="panel">
+            <PanelTitle icon={WalletCards} title="Portal Payment Submissions" />
+            <DataTable
+              columns={['Contact', 'Project', 'Invoice', 'Amount', 'Method', 'Status', 'Action']}
+              rows={(portals.payment_submissions || []).map((payment) => [
+                payment.portal_user?.name || '',
+                payment.project?.name || '',
+                payment.invoice?.invoice_number || '',
+                `${payment.currency} ${payment.amount}`,
+                labelize(payment.payment_method),
+                <Badge key="status" value={payment.status} />,
+                payment.status === 'submitted' ? <div key={`payment-${payment.id}`} className="row-actions"><button type="button" className="table-action" onClick={() => runAction(() => api.reviewPortalPayment(payment.id, 'verified'), 'Payment verified.')}>Verify</button><button type="button" className="table-action danger" onClick={() => runAction(() => api.reviewPortalPayment(payment.id, 'rejected'), 'Payment rejected.')}>Reject</button></div> : 'Reviewed',
               ])}
             />
           </section>
@@ -15220,8 +15274,31 @@ function PortalsView({
   }
 
   function renderDirectory() {
+    const resendInvitation = (portalUser) => runAction(
+      () => api.resendPortalInvitation(portalUser.id),
+      'Portal invitation resent.',
+    ).then((result) => {
+      if (result?.invitation_url) setLastPortalInvite(result.invitation_url)
+    })
+
+    const setAccountStatus = (portalUser, status) => runAction(
+      () => api.updatePortalUserStatus(portalUser.id, status),
+      `Portal account ${status}.`,
+    )
+
     return (
       <>
+        {lastPortalInvite && (
+          <section className="panel">
+            <PanelTitle icon={Send} title="Portal Invitation Link" />
+            <p>Send this secure, 72-hour link to the invited external user. Email delivery is also attempted automatically.</p>
+            <div className="row-actions">
+              <Field label="Invitation URL" value={lastPortalInvite} readOnly />
+              <button type="button" className="table-action" onClick={() => navigator.clipboard.writeText(lastPortalInvite)}>Copy link</button>
+              <button type="button" className="table-action" onClick={() => setLastPortalInvite('')}>Hide</button>
+            </div>
+          </section>
+        )}
         <div className="grid-main">
           <section className="panel">
             <PanelTitle icon={Users} title="Portal User" />
@@ -15238,6 +15315,14 @@ function PortalsView({
                 {clients.map((client) => (
                   <option key={client.id} value={client.id}>
                     {client.name}
+                  </option>
+                ))}
+              </Select>
+              <Select label="Supplier" name="supplier_id" value={forms.user.supplier_id} onChange={setPortalForm('user')}>
+                <option value="">None</option>
+                {suppliers.map((supplier) => (
+                  <option key={supplier.id} value={supplier.id}>
+                    {supplier.name}
                   </option>
                 ))}
               </Select>
@@ -15294,7 +15379,7 @@ function PortalsView({
         <section className="panel">
           <PanelTitle icon={Users} title="Portal Directory" />
           <DataTable
-            columns={['Name', 'Type', 'Organization', 'Status', 'Accesses', 'Open items']}
+            columns={['Name', 'Type', 'Organization', 'Status', 'Accesses', 'Open items', 'Actions']}
             rows={portalUsers.map((portalUser) => [
               portalUser.name,
               labelize(portalUser.user_type),
@@ -15302,6 +15387,11 @@ function PortalsView({
               <Badge key="status" value={portalUser.status} />,
               portalUser.accesses?.length || 0,
               portalUser.work_items?.filter((item) => !['approved', 'completed', 'closed', 'paid', 'signed_off'].includes(item.status)).length || 0,
+              <div className="row-actions" key={`portal-user-${portalUser.id}`}>
+                {portalUser.status === 'invited' && <button type="button" className="table-action" onClick={() => resendInvitation(portalUser)}>Resend invite</button>}
+                {portalUser.status === 'active' ? <button type="button" className="table-action danger" onClick={() => setAccountStatus(portalUser, 'suspended')}>Suspend</button> : <button type="button" className="table-action" onClick={() => setAccountStatus(portalUser, 'active')}>Activate</button>}
+                <button type="button" className="table-action danger" onClick={() => setAccountStatus(portalUser, 'revoked')}>Revoke</button>
+              </div>,
             ])}
           />
         </section>

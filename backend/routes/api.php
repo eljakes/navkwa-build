@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\OrganizationController;
 use App\Http\Controllers\Api\PeopleController;
 use App\Http\Controllers\Api\PlatformAdminController;
 use App\Http\Controllers\Api\PortalController;
+use App\Http\Controllers\Api\PortalExternalController;
 use App\Http\Controllers\Api\ProcurementController;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\ProjectTaskController;
@@ -25,6 +26,26 @@ use App\Http\Controllers\Api\SalesController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function (): void {
+    Route::prefix('portal')->group(function (): void {
+        Route::post('auth/accept', [PortalExternalController::class, 'acceptInvitation'])->middleware('throttle:auth.login');
+        Route::post('auth/login', [PortalExternalController::class, 'login'])->middleware('throttle:auth.login');
+        Route::post('auth/forgot-password', [PortalExternalController::class, 'forgotPassword'])->middleware('throttle:auth.login');
+        Route::post('auth/reset-password', [PortalExternalController::class, 'resetPassword'])->middleware('throttle:auth.login');
+
+        Route::middleware(['auth:sanctum', 'portal.user', 'throttle:api'])->group(function (): void {
+            Route::get('auth/me', [PortalExternalController::class, 'me']);
+            Route::post('auth/logout', [PortalExternalController::class, 'logout']);
+            Route::get('workspace', [PortalExternalController::class, 'workspace']);
+            Route::post('work-items', [PortalExternalController::class, 'storeWorkItem']);
+            Route::post('work-items/{workItem}/respond', [PortalExternalController::class, 'respondWorkItem']);
+            Route::get('work-items/{workItem}/attachments/{index}', [PortalExternalController::class, 'downloadAttachment']);
+            Route::post('client-approvals/{approval}/review', [PortalExternalController::class, 'reviewApproval']);
+            Route::post('messages', [PortalExternalController::class, 'storeMessage']);
+            Route::post('payments', [PortalExternalController::class, 'submitPayment']);
+            Route::post('security/mfa/setup', [PortalExternalController::class, 'setupMfa']);
+            Route::post('security/mfa/enable', [PortalExternalController::class, 'enableMfa']);
+        });
+    });
     Route::post('auth/register', [AuthController::class, 'register'])->middleware('throttle:auth.login');
     Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttle:auth.login');
     Route::post('auth/mfa-challenge', [AuthController::class, 'mfaChallenge'])->middleware('throttle:auth.mfa');
@@ -96,14 +117,14 @@ Route::prefix('v1')->group(function (): void {
         Route::get('projects', [ProjectController::class, 'index']);
         Route::post('projects', [ProjectController::class, 'store'])->middleware('permission:projects.manage');
         Route::post('projects/{project}/future-image', [ProjectController::class, 'uploadFutureImage'])->middleware('permission:projects.manage');
-        Route::post('projects/{project}/restore', [ProjectController::class, 'restore'])->middleware('permission:projects.manage|settings.manage');
-        Route::delete('projects/{project}/force', [ProjectController::class, 'forceDestroy'])->middleware('permission:projects.manage|settings.manage');
+        Route::post('projects/{project}/restore', [ProjectController::class, 'restore'])->middleware('permission:settings.manage');
+        Route::delete('projects/{project}/force', [ProjectController::class, 'forceDestroy'])->middleware('permission:settings.manage');
         Route::post('projects/{project}/templates', [ProjectController::class, 'storeTemplate'])->middleware('permission:projects.manage|settings.manage');
         Route::delete('project-templates/{projectTemplate}', [ProjectController::class, 'destroyTemplate'])->middleware('permission:projects.manage|settings.manage');
         Route::get('projects/timeline', [ProjectController::class, 'timeline']);
         Route::get('projects/{project}', [ProjectController::class, 'show']);
         Route::patch('projects/{project}', [ProjectController::class, 'update'])->middleware('permission:settings.manage');
-        Route::delete('projects/{project}', [ProjectController::class, 'destroy'])->middleware('permission:projects.manage|settings.manage');
+        Route::delete('projects/{project}', [ProjectController::class, 'destroy'])->middleware('permission:settings.manage');
 
         Route::post('projects/{project}/tasks', [ProjectTaskController::class, 'store'])->middleware('permission:projects.manage');
         Route::patch('projects/{project}/tasks/{task}', [ProjectTaskController::class, 'update'])->middleware('permission:projects.manage');
@@ -267,6 +288,10 @@ Route::prefix('v1')->group(function (): void {
 
         Route::get('portals', [PortalController::class, 'index'])->middleware('permission:portals.manage');
         Route::post('portals/users', [PortalController::class, 'storePortalUser'])->middleware('permission:portals.manage');
+        Route::post('portals/users/{portalUser}/invite', [PortalController::class, 'resendInvitation'])->middleware('permission:portals.manage');
+        Route::patch('portals/users/{portalUser}/status', [PortalController::class, 'updatePortalUserStatus'])->middleware('permission:portals.manage');
+        Route::post('portals/users/{portalUser}/messages', [PortalController::class, 'storeMessage'])->middleware('permission:portals.manage');
+        Route::post('portals/payments/{payment}/review', [PortalController::class, 'reviewPayment'])->middleware('permission:portals.manage');
         Route::post('portals/users/{portalUser}/access', [PortalController::class, 'grantAccess'])->middleware('permission:portals.manage');
         Route::post('projects/{project}/client-approvals', [PortalController::class, 'storeClientApproval'])->middleware('permission:portals.manage');
         Route::post('portals/client-approvals/{approval}/review', [PortalController::class, 'reviewClientApproval'])->middleware('permission:portals.manage');

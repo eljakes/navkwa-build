@@ -12,6 +12,7 @@ class AuditLog extends Model
     protected $fillable = [
         'company_id',
         'user_id',
+        'portal_user_id',
         'auditable_type',
         'auditable_id',
         'action',
@@ -67,6 +68,7 @@ class AuditLog extends Model
 
             if ($isSensitive) {
                 $redactedCount++;
+
                 continue;
             }
 

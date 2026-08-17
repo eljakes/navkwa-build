@@ -957,6 +957,23 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
+  resendPortalInvitation: (portalUserId) =>
+    request(`/portals/users/${portalUserId}/invite`, { method: 'POST' }),
+  updatePortalUserStatus: (portalUserId, status) =>
+    request(`/portals/users/${portalUserId}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    }),
+  sendPortalMessage: (portalUserId, payload) =>
+    request(`/portals/users/${portalUserId}/messages`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  reviewPortalPayment: (paymentId, status) =>
+    request(`/portals/payments/${paymentId}/review`, {
+      method: 'POST',
+      body: JSON.stringify({ status }),
+    }),
   grantPortalAccess: (portalUserId, payload) =>
     request(`/portals/users/${portalUserId}/access`, {
       method: 'POST',

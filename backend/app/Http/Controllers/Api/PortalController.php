@@ -11,6 +11,8 @@ use App\Models\FieldDailyReport;
 use App\Models\Inspection;
 use App\Models\Invoice;
 use App\Models\PortalAccess;
+use App\Models\PortalMessage;
+use App\Models\PortalPaymentSubmission;
 use App\Models\PortalUser;
 use App\Models\PortalWorkItem;
 use App\Models\Project;
@@ -19,6 +21,8 @@ use App\Models\Supplier;
 use App\Models\SupplierInvoice;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class PortalController extends ApiController
@@ -34,7 +38,7 @@ class PortalController extends ApiController
             ->get();
 
         return response()->json([
-            'portal_users' => PortalUser::query()->forCompany($companyId)->with(['client:id,name', 'accesses.project:id,code,name', 'workItems:id,portal_user_id,portal_type,item_type,status'])->orderBy('name')->get(),
+            'portal_users' => PortalUser::query()->forCompany($companyId)->with(['client:id,name', 'supplier:id,name', 'accesses.project:id,code,name', 'workItems:id,portal_user_id,portal_type,item_type,status'])->orderBy('name')->get(),
             'accesses' => PortalAccess::query()->forCompany($companyId)->with(['portalUser:id,name,email,user_type', 'project:id,code,name'])->latest()->get(),
             'client_approvals' => ClientApproval::query()->forCompany($companyId)->with(['portalUser:id,name,email', 'project:id,code,name', 'drawing:id,drawing_number,title', 'document:id,document_number,title'])->latest()->limit(100)->get(),
             'consultant_submittals' => ConsultantSubmittal::query()->forCompany($companyId)->with(['portalUser:id,name,email', 'project:id,code,name', 'drawing:id,drawing_number,title', 'document:id,document_number,title'])->latest()->limit(100)->get(),
@@ -47,6 +51,8 @@ class PortalController extends ApiController
             'inspections' => Inspection::query()->forCompany($companyId)->with(['project:id,code,name'])->latest()->limit(80)->get(),
             'daily_reports' => FieldDailyReport::query()->forCompany($companyId)->with(['project:id,code,name'])->latest('report_date')->limit(80)->get(),
             'activity' => $this->portalActivity($workItems),
+            'messages' => PortalMessage::query()->forCompany($companyId)->with(['portalUser:id,name,email', 'project:id,name'])->latest()->limit(100)->get(),
+            'payment_submissions' => PortalPaymentSubmission::query()->forCompany($companyId)->with(['portalUser:id,name,email', 'project:id,name', 'invoice:id,invoice_number'])->latest()->limit(100)->get(),
             'summary' => [
                 'active_users' => PortalUser::query()->forCompany($companyId)->where('status', 'active')->count(),
                 'pending_client_approvals' => ClientApproval::query()->forCompany($companyId)->where('status', 'submitted')->count(),
@@ -66,6 +72,7 @@ class PortalController extends ApiController
 
         $data = $request->validate([
             'client_id' => ['nullable', 'integer'],
+            'supplier_id' => ['nullable', 'integer'],
             'user_type' => ['required', Rule::in(array_keys($this->portalTypesConfig()))],
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', Rule::unique('portal_users')->where('company_id', $companyId)],
@@ -77,20 +84,93 @@ class PortalController extends ApiController
         if (! empty($data['client_id'])) {
             $client = Client::query()->forCompany($companyId)->whereKey($data['client_id'])->firstOrFail();
         }
+        $supplier = null;
+        if (! empty($data['supplier_id'])) {
+            $supplier = Supplier::query()->forCompany($companyId)->whereKey($data['supplier_id'])->firstOrFail();
+        }
 
+        $invitationToken = Str::random(64);
         $portalUser = PortalUser::query()->create([
             'company_id' => $companyId,
             'client_id' => $client?->id,
+            'supplier_id' => $supplier?->id,
             'user_type' => $data['user_type'],
             'name' => $data['name'],
             'email' => strtolower($data['email']),
             'phone' => $data['phone'] ?? null,
-            'organization' => $data['organization'] ?? $client?->name,
-            'status' => 'active',
+            'organization' => $data['organization'] ?? $client?->name ?? $supplier?->name,
+            'status' => 'invited',
+            'invitation_token_hash' => hash('sha256', $invitationToken),
+            'invitation_expires_at' => now()->addHours(72),
             'invited_by' => $this->user($request)->id,
         ]);
 
-        return response()->json(['portal_user' => $portalUser->load('client')], 201);
+        $invitationUrl = $this->sendPortalInvitation($portalUser, $invitationToken);
+
+        return response()->json([
+            'portal_user' => $portalUser->load('client'),
+            'invitation_url' => $invitationUrl,
+            'message' => 'Portal invitation created.',
+        ], 201);
+    }
+
+    public function resendInvitation(Request $request, PortalUser $portalUser): JsonResponse
+    {
+        $this->assertTenant($request, $portalUser);
+        $token = Str::random(64);
+        $portalUser->forceFill([
+            'status' => 'invited',
+            'invitation_token_hash' => hash('sha256', $token),
+            'invitation_expires_at' => now()->addHours(72),
+        ])->save();
+
+        return response()->json([
+            'message' => 'Portal invitation resent.',
+            'invitation_url' => $this->sendPortalInvitation($portalUser, $token),
+        ]);
+    }
+
+    public function updatePortalUserStatus(Request $request, PortalUser $portalUser): JsonResponse
+    {
+        $this->assertTenant($request, $portalUser);
+        $data = $request->validate(['status' => ['required', Rule::in(['active', 'suspended', 'revoked'])]]);
+        $portalUser->update(['status' => $data['status']]);
+        if ($data['status'] !== 'active') {
+            $portalUser->tokens()->delete();
+        }
+
+        return response()->json(['portal_user' => $portalUser->fresh(), 'message' => 'Portal account status updated.']);
+    }
+
+    public function reviewPayment(Request $request, PortalPaymentSubmission $payment): JsonResponse
+    {
+        $this->assertTenant($request, $payment);
+        $data = $request->validate(['status' => ['required', Rule::in(['verified', 'rejected'])], 'notes' => ['nullable', 'string', 'max:2000']]);
+        $payment->update(['status' => $data['status'], 'notes' => $data['notes'] ?? $payment->notes]);
+
+        return response()->json(['payment' => $payment->fresh(), 'message' => 'Portal payment submission reviewed.']);
+    }
+
+    public function storeMessage(Request $request, PortalUser $portalUser): JsonResponse
+    {
+        $this->assertTenant($request, $portalUser);
+        $data = $request->validate([
+            'project_id' => ['required', 'integer'],
+            'subject' => ['nullable', 'string', 'max:255'],
+            'message' => ['required', 'string', 'max:4000'],
+        ]);
+        $access = $portalUser->accesses()->where('project_id', $data['project_id'])->firstOrFail();
+        abort_unless((int) $access->company_id === $this->companyId($request), 404);
+        $message = PortalMessage::query()->create([
+            'company_id' => $this->companyId($request),
+            'portal_user_id' => $portalUser->id,
+            'project_id' => $data['project_id'],
+            'user_id' => $this->user($request)->id,
+            'subject' => $data['subject'] ?? null,
+            'message' => $data['message'],
+        ]);
+
+        return response()->json(['portal_message' => $message, 'message' => 'Reply sent to the portal user.'], 201);
     }
 
     public function grantAccess(Request $request, PortalUser $portalUser): JsonResponse
@@ -485,5 +565,24 @@ class PortalController extends ApiController
             'progress_update', 'project_health_update' => 'PRG',
             default => 'PWI',
         };
+    }
+
+    private function sendPortalInvitation(PortalUser $portalUser, string $token): string
+    {
+        $portalUser->loadMissing('company:id,name,tenant_key');
+        $url = rtrim((string) config('app.frontend_url'), '/').'/portal?invite='.urlencode($token)
+            .'&email='.urlencode($portalUser->email)
+            .'&company='.urlencode($portalUser->company->tenant_key);
+
+        try {
+            Mail::raw(
+                "You have been invited to the {$portalUser->user_type} portal for {$portalUser->company->name}.\n\nAccept your secure invitation within 72 hours:\n{$url}",
+                fn ($mail) => $mail->to($portalUser->email, $portalUser->name)->subject('Your Navkwa Build portal invitation'),
+            );
+        } catch (\Throwable $exception) {
+            report($exception);
+        }
+
+        return $url;
     }
 }
