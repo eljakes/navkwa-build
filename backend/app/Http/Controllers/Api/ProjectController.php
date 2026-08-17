@@ -65,7 +65,7 @@ class ProjectController extends ApiController
             'progress_percent' => ['nullable', 'integer', 'between:0,100'],
             'start_date' => ['nullable', 'date'],
             'target_end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
-            'future_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:6144'],
+            'future_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:102400'],
             ...$this->projectMetadataRules(),
         ]);
 
@@ -138,7 +138,7 @@ class ProjectController extends ApiController
     {
         $project = $this->projectForTenant($request, $project->id);
         $request->validate([
-            'future_image' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:6144'],
+            'future_image' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:102400'],
         ]);
 
         if ($project->future_image_path) {
@@ -218,7 +218,7 @@ class ProjectController extends ApiController
             'start_date' => ['nullable', 'date'],
             'target_end_date' => ['nullable', 'date'],
             'actual_end_date' => ['nullable', 'date'],
-            'future_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:6144'],
+            'future_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:102400'],
             ...$this->projectMetadataRules(true),
         ]);
 
