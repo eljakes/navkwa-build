@@ -2296,7 +2296,7 @@ function App() {
       return
     }
 
-    await runAction(
+    const result = await runAction(
       () =>
         api.grantPortalAccess(form.portal_user_id, {
           project_id: Number(form.project_id),
@@ -2305,7 +2305,11 @@ function App() {
         }),
       'Portal access granted.',
     )
-    setPortalForms((current) => ({ ...current, access: { ...emptyPortalForms.access, portal_user_id: form.portal_user_id, project_id: form.project_id } }))
+    if (result) {
+      setPortalForms((current) => ({ ...current, access: { ...emptyPortalForms.access, portal_user_id: form.portal_user_id, project_id: form.project_id } }))
+    }
+
+    return result
   }
 
   async function createClientApproval(event) {
@@ -14843,6 +14847,8 @@ function PortalsView({
   runAction,
 }) {
   const [activePortalTab, setActivePortalTab] = useState('overview')
+  const [grantFeedback, setGrantFeedback] = useState('')
+  const [grantBusy, setGrantBusy] = useState(false)
   const workItems = portals.work_items || []
   const portalUsers = portals.portal_users || []
   const portalTypeConfig = {
@@ -14891,6 +14897,13 @@ function PortalsView({
   const usersFor = (type) => portalUsers.filter((portalUser) => portalUser.user_type === type)
   const selectedPortalUsers = usersFor(activeType)
   const workItemsFor = (type) => workItems.filter((item) => item.portal_type === type)
+  const submitAccessGrant = async (event) => {
+    setGrantBusy(true)
+    setGrantFeedback('')
+    const result = await grantPortalAccess(event)
+    if (result) setGrantFeedback(`Access granted successfully: ${labelize(result.access.access_level)} access to ${result.access.project?.name || 'the selected project'}.`)
+    setGrantBusy(false)
+  }
   const portalWorkItemRows = (items) =>
     items.map((item) => [
       <div key="item" className="table-primary">
@@ -15338,7 +15351,7 @@ function PortalsView({
 
           <section className="panel">
             <PanelTitle icon={FolderKanban} title="Project Access" />
-            <form className="form-grid two" onSubmit={grantPortalAccess}>
+            <form className="form-grid two" onSubmit={submitAccessGrant}>
               <Select label="Portal user" name="portal_user_id" value={forms.access.portal_user_id} onChange={setPortalForm('access')} required>
                 <option value="">Select</option>
                 {portalUsers.map((portalUser) => (
@@ -15356,11 +15369,11 @@ function PortalsView({
                 ))}
               </Select>
               <Select label="Access" name="access_level" value={forms.access.access_level} onChange={setPortalForm('access')}>
-                <option value="view">View</option>
-                <option value="comment">Comment</option>
-                <option value="approve">Approve</option>
-                <option value="submit">Submit</option>
-                <option value="manage">Manage</option>
+                <option value="view">View — read only</option>
+                <option value="comment">Comment — view and message</option>
+                <option value="submit">Submit — upload and submit payments/work</option>
+                <option value="approve">Approve — submit and approve</option>
+                <option value="manage">Manage — full portal access</option>
               </Select>
               <Select label="Scope" name="access_scope" value={forms.access.access_scope} onChange={setPortalForm('access')}>
                 <option value="project">Project</option>
@@ -15368,9 +15381,11 @@ function PortalsView({
                 <option value="work_package">Work package</option>
                 <option value="cost_code">Cost code</option>
               </Select>
-              <button type="submit" className="primary-action span-2">
+              <p className="span-2">Choose <strong>Submit</strong> or higher when the external user must upload files, send work items, or submit payments for verification.</p>
+              {grantFeedback && <div className="workspace-feedback success span-2" role="status"><CheckCircle2 size={18} /><span>{grantFeedback}</span></div>}
+              <button type="submit" className="primary-action span-2" disabled={grantBusy}>
                 <Send size={17} />
-                Grant access
+                {grantBusy ? 'Granting access…' : 'Grant access'}
               </button>
             </form>
           </section>

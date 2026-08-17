@@ -204,6 +204,12 @@ class PortalController extends ApiController
             ],
         );
 
+        $this->sendPortalEmail(
+            $portalUser,
+            'Navkwa Build portal access updated',
+            "Your {$access->access_level} access to {$project->name} has been granted or updated.\n\nSign in: ".rtrim((string) config('app.frontend_url'), '/').'/portal',
+        );
+
         return response()->json(['access' => $access->load(['portalUser', 'project'])], 201);
     }
 
@@ -245,7 +251,16 @@ class PortalController extends ApiController
             'created_by' => $this->user($request)->id,
         ]);
 
-        return response()->json(['client_approval' => $approval->load(['portalUser', 'project', 'drawing', 'document'])], 201);
+        $approval->load(['portalUser', 'project', 'drawing', 'document']);
+        if ($approval->portalUser) {
+            $this->sendPortalEmail(
+                $approval->portalUser,
+                'Client approval requested in Navkwa Build',
+                "A new approval request, \"{$approval->title}\", is waiting for your review on {$projectModel->name}.\n\nOpen the portal: ".rtrim((string) config('app.frontend_url'), '/').'/portal',
+            );
+        }
+
+        return response()->json(['client_approval' => $approval], 201);
     }
 
     public function reviewClientApproval(Request $request, ClientApproval $approval): JsonResponse
@@ -574,15 +589,21 @@ class PortalController extends ApiController
             .'&email='.urlencode($portalUser->email)
             .'&company='.urlencode($portalUser->company->tenant_key);
 
+        $this->sendPortalEmail(
+            $portalUser,
+            'Your Navkwa Build portal invitation',
+            "You have been invited to the {$portalUser->user_type} portal for {$portalUser->company->name}.\n\nAccept your secure invitation within 72 hours:\n{$url}",
+        );
+
+        return $url;
+    }
+
+    private function sendPortalEmail(PortalUser $portalUser, string $subject, string $message): void
+    {
         try {
-            Mail::raw(
-                "You have been invited to the {$portalUser->user_type} portal for {$portalUser->company->name}.\n\nAccept your secure invitation within 72 hours:\n{$url}",
-                fn ($mail) => $mail->to($portalUser->email, $portalUser->name)->subject('Your Navkwa Build portal invitation'),
-            );
+            Mail::raw($message, fn ($mail) => $mail->to($portalUser->email, $portalUser->name)->subject($subject));
         } catch (\Throwable $exception) {
             report($exception);
         }
-
-        return $url;
     }
 }
