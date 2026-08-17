@@ -1,12 +1,12 @@
 <?php
 
-use Illuminate\Foundation\Inspiring;
-use Illuminate\Support\Facades\Artisan;
 use App\Models\Branch;
 use App\Models\Company;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\PlatformBackupService;
+use Illuminate\Foundation\Inspiring;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
@@ -116,7 +116,7 @@ $dailyBackupCommand = function (): int {
         try {
             $created[] = $backups->createBackup('platform', metadata: $metadata);
             $this->info('Cloud Console backup completed.');
-        } catch (\Throwable $exception) {
+        } catch (Throwable $exception) {
             report($exception);
             $failures[] = 'Cloud Console: '.$exception->getMessage();
             $this->error('Cloud Console backup failed.');
@@ -132,7 +132,7 @@ $dailyBackupCommand = function (): int {
             try {
                 $created[] = $backups->createBackup('tenant', company: $company, metadata: $metadata);
                 $this->info("ERP backup completed for {$company->name}.");
-            } catch (\Throwable $exception) {
+            } catch (Throwable $exception) {
                 report($exception);
                 $failures[] = "{$company->name}: ".$exception->getMessage();
                 $this->error("ERP backup failed for {$company->name}.");
@@ -274,7 +274,7 @@ $productionCheckCommand = function (): int {
 
         try {
             DB::connection()->getPdo();
-        } catch (\Throwable $exception) {
+        } catch (Throwable $exception) {
             $failures[] = 'Database connection failed: '.$exception->getMessage();
         }
     }
